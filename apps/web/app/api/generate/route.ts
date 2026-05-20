@@ -432,6 +432,8 @@ Notes/ICP context: ${lead.notes || 'N/A'}`;
 
   } catch (err: any) {
     console.error('API Generate Error:', err);
+    const Sentry = require('@sentry/nextjs');
+    Sentry.captureException(err);
     return NextResponse.json({ error: err.message || 'Server error' }, { status: 500 });
   }
 }

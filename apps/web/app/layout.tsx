@@ -3,6 +3,7 @@ import { Geist, Geist_Mono, Inter } from "next/font/google"
 import "@workspace/ui/globals.css"
 import { ThemeProvider } from "@/components/theme-provider"
 import { cn } from "@workspace/ui/lib/utils";
+import { PostHogInit } from "@/lib/analytics";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'})
 
@@ -23,6 +24,7 @@ export default function RootLayout({
       className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
     >
       <body>
+        <PostHogInit />
         <ThemeProvider>{children}</ThemeProvider>
       </body>
     </html>

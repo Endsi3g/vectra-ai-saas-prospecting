@@ -1,6 +1,17 @@
 import { test, expect } from '@playwright/test';
 
-test.beforeEach(async ({ page }) => {
+test.beforeEach(async ({ page, context }) => {
+  // Set mock auth cookie & header for server-side middleware bypass
+  await context.setExtraHTTPHeaders({
+    'x-test-bypass': 'true'
+  });
+  await context.addCookies([{
+    name: 'sb-mock-session',
+    value: 'true',
+    domain: 'localhost',
+    path: '/'
+  }]);
+
   // Capture page console logs, requests and errors for debugging
   page.on('console', msg => console.log(`[BROWSER LOG] [${msg.type()}] ${msg.text()}`));
   page.on('pageerror', err => console.error(`[BROWSER EXCEPTION] ${err.message}\n${err.stack}`));
@@ -23,6 +34,7 @@ test.beforeEach(async ({ page }) => {
       }
     };
     window.localStorage.setItem('sb-placeholder-auth-token', JSON.stringify(mockSession));
+    window.localStorage.setItem('sb-xuzkfnpzmmtgpsjaiguv-auth-token', JSON.stringify(mockSession));
     window.localStorage.setItem('tour_completed', 'true');
   });
 

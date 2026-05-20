@@ -343,7 +343,7 @@ export default function DashboardPage() {
                       <stop offset="100%" stopColor="#10B981" stopOpacity="0.0" />
                     </linearGradient>
                   </defs>
-                  <path d={areaPath} fill="url(#chartGradient)" />
+                  <polygon points={areaPath} fill="url(#chartGradient)" />
 
                   {/* SVG Stroke Line */}
                   <polyline

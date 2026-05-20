@@ -21,6 +21,7 @@ import {
   Lock
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import { captureAnalyticsEvent } from '@/lib/analytics';
 
 interface Candidate {
   name: string;
@@ -91,6 +92,7 @@ export default function SourcingPage() {
     const queryText = query;
     setQuery('');
     setIsSearching(true);
+    captureAnalyticsEvent('sourcing_query_run', { query: queryText });
 
     const userMsg = { sender: 'user', text: queryText };
     const copilotPlaceholder = {

@@ -12,6 +12,7 @@ import { Badge } from '@workspace/ui/components/badge';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@workspace/ui/components/resizable';
 import { supabase } from '@/lib/supabase';
 import Papa from 'papaparse';
+import { captureAnalyticsEvent } from '@/lib/analytics';
 import { 
   Sparkles, 
   Upload, 
@@ -366,6 +367,7 @@ export default function OutreachPage() {
     setLoading(true);
     setErrorMessage(null);
     setIsGenerating(true);
+    captureAnalyticsEvent('campaign_generation_started', { leadsCount: leads.length, campaignName });
     setStreamMessages(["Starting Hermes-Agent pipeline..."]);
 
     try {
