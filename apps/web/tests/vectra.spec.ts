@@ -212,19 +212,42 @@ test.describe('Vectra E2E UI Tests', () => {
     await expect(checkbox).not.toBeChecked();
   });
 
-  test('5. Settings & Billing Page Renders', async ({ page }) => {
+  test('5. Settings Page sub-routes validation', async ({ page }) => {
+    // 1. Check Connections Page
     await page.goto('/app/settings');
-    
-    // Check page header
-    await expect(page.locator('header').getByText('Settings', { exact: true })).toBeVisible();
-    
-    // Check billing section elements
-    await expect(page.locator('text=Facturation & Abonnement')).toBeVisible();
-    await expect(page.locator('text=Plan Alpha Free')).toBeVisible();
-    await expect(page.locator('text=Solo Pro')).toBeVisible();
-    await expect(page.locator('text=Agency Premium')).toBeVisible();
-    
-    // Check buttons
-    await expect(page.locator('button:has-text("S\'abonner Pro")')).toBeVisible();
+    await expect(page.locator('header').getByText('Connections', { exact: true })).toBeVisible();
+    await expect(page.locator('text=Configuration de l\'IA (Onboarding)')).toBeVisible();
+    await expect(page.locator('text=Tonalité par défaut des messages')).toBeVisible();
+
+    // 2. Check Team Members Page
+    await page.goto('/app/settings/members');
+    await expect(page.locator('header').getByText('Members', { exact: true })).toBeVisible();
+    await expect(page.locator('h1:has-text("Team Members")')).toBeVisible();
+    await expect(page.locator('button:has-text("Invite")')).toBeVisible();
+    await expect(page.locator('button:has-text("Copy join link")')).toBeVisible();
+
+    // 3. Check Branding Page
+    await page.goto('/app/settings/branding');
+    await expect(page.locator('header').getByText('Branding', { exact: true })).toBeVisible();
+    await expect(page.locator('h1:has-text("Branding")')).toBeVisible();
+    await expect(page.locator('text=Primary Color')).toBeVisible();
+    await expect(page.locator('text=Secondary Color')).toBeVisible();
+
+    // 4. Check Plans Page
+    await page.goto('/app/settings/plans');
+    await expect(page.locator('header').getByText('Plans', { exact: true })).toBeVisible();
+    await expect(page.locator('h1:has-text("Plans")')).toBeVisible();
+    await expect(page.locator('h3:has-text("Starter")')).toBeVisible();
+    await expect(page.locator('h3:has-text("Scale")')).toBeVisible();
+    await expect(page.locator('button:has-text("Upgrade to Starter")')).toBeVisible();
+
+    // 5. Check Integrations Page
+    await page.goto('/app/settings/integrations');
+    await expect(page.locator('header').getByText('Integrations', { exact: true })).toBeVisible();
+    await expect(page.locator('h1:has-text("Integrations")')).toBeVisible();
+    await expect(page.locator('text=Ashby')).toBeVisible();
+    await expect(page.locator('text=greenhouse')).toBeVisible();
+    await expect(page.locator('text=LEVER')).toBeVisible();
+    await expect(page.locator('button:has-text("Add to Slack")')).toBeVisible();
   });
 });

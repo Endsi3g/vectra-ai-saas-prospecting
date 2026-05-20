@@ -135,16 +135,8 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-zinc-50 dark:bg-zinc-950">
-      <header className="flex h-16 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-6 dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400 select-none">
-          <span>Settings</span>
-          <span className="text-zinc-300 dark:text-zinc-700 font-normal">/</span>
-          <span className="font-semibold text-zinc-900 dark:text-white">Workspace Settings</span>
-        </div>
-      </header>
-
-      <div className="flex-1 overflow-y-auto p-6 space-y-6 max-w-2xl">
+    <div className="flex-1 overflow-y-auto p-6">
+      <div className="space-y-6 max-w-2xl">
         {loading ? (
           <div className="text-sm text-zinc-500 py-10">Chargement des paramètres...</div>
         ) : (

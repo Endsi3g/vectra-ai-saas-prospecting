@@ -26,7 +26,11 @@ import {
   HelpCircle,
   Building,
   UserPlus,
-  ChevronDown
+  ChevronDown,
+  ArrowLeft,
+  Palette,
+  Gift,
+  Terminal
 } from 'lucide-react';
 import TourGuide from '@/components/TourGuide';
 import ProfileDropdown from '@/components/ProfileDropdown';
@@ -175,6 +179,94 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       icon: Bot,
     },
   ];
+
+  const isSettingsPage = pathname.startsWith('/app/settings');
+
+  const settingsNavItems = [
+    { name: 'Connections', href: '/app/settings', icon: Link2 },
+    { name: 'Integrations', href: '/app/settings/integrations', icon: FolderOpen },
+    { name: 'Mailboxes', href: '/app/settings/mailboxes', icon: Mail },
+    { name: 'Plans', href: '/app/settings/plans', icon: Coins },
+    { name: 'Members', href: '/app/settings/members', icon: UserPlus },
+    { name: 'Branding', href: '/app/settings/branding', icon: Palette },
+    { name: 'Referrals', href: '/app/settings/referrals', icon: Gift },
+    { name: 'API/MCP', href: '/app/settings/api-mcp', icon: Terminal },
+  ];
+
+  const isItemActive = (href: string) => {
+    if (href === '/app/settings') {
+      return pathname === '/app/settings' || pathname === '/app/settings/';
+    }
+    return pathname.startsWith(href);
+  };
+
+  if (isSettingsPage) {
+    return (
+      <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-50 select-none text-zinc-950 font-sans">
+        {/* Top green trial banner */}
+        <div className="h-9 w-full flex items-center justify-center bg-[#E6F7ED] text-[#227A4B] text-[11px] font-semibold border-b border-[#D0EFE0] shrink-0 select-none">
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-3.5 w-3.5 rounded bg-[#227A4B]/10 flex items-center justify-center font-bold text-[8px]">88</span>
+            <span>You have 5 more searches on your Starter trial.</span>
+            <Link href="/app/settings/plans" className="underline font-bold hover:text-[#185834] ml-1">Explore plans</Link>
+          </span>
+        </div>
+
+        {/* Lower container containing Sidebar and Main Area */}
+        <div className="flex-1 flex overflow-hidden">
+          {/* Settings Sidebar */}
+          <aside className="w-60 flex flex-col border-r border-zinc-200 bg-white shrink-0">
+            {/* Go back button header */}
+            <div className="h-14 flex items-center px-4 select-none">
+              <Link
+                href="/app"
+                className="flex items-center gap-2 text-xs font-bold text-zinc-500 hover:text-zinc-800 transition-colors"
+              >
+                <ArrowLeft className="h-3.5 w-3.5" />
+                <span>Go back</span>
+              </Link>
+            </div>
+
+            {/* Sidebar navigation list */}
+            <nav className="flex-1 px-3 py-2 space-y-1 overflow-y-auto">
+              {settingsNavItems.map((item) => {
+                const isActive = isItemActive(item.href);
+                const Icon = item.icon;
+                return (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    className={`flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-medium transition-all select-none ${
+                      isActive
+                        ? 'bg-zinc-100 text-zinc-950 font-bold'
+                        : 'text-zinc-500 hover:bg-zinc-50 hover:text-zinc-900'
+                    }`}
+                  >
+                    <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-zinc-900' : 'text-zinc-400'}`} />
+                    <span>{item.name}</span>
+                  </Link>
+                );
+              })}
+            </nav>
+
+            {/* Have feedback? button at bottom */}
+            <div className="p-4 border-t border-zinc-100 shrink-0">
+              <button className="w-full py-2 px-3 bg-white border border-zinc-200 rounded-lg text-xs font-semibold text-zinc-600 hover:bg-zinc-50 hover:text-zinc-800 transition-all text-center">
+                Have feedback?
+              </button>
+            </div>
+          </aside>
+
+          {/* Main Area */}
+          <main className="flex-1 flex flex-col h-full overflow-hidden bg-white">
+            {children}
+          </main>
+        </div>
+
+        {showTour && <TourGuide onClose={handleTourClose} />}
+      </div>
+    );
+  }
 
   return (
     <div className="flex h-screen w-screen overflow-hidden bg-zinc-50 select-none text-zinc-950 font-sans">
