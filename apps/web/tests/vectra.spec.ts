@@ -252,14 +252,35 @@ test.describe('Vectra E2E UI Tests', () => {
   });
 
   test('6. New Premium Modules validation (Inbox, Agents, Analytics)', async ({ page }) => {
-    // 1. Check Inbox Page
+    // 1. Check Inbox Page and Interactions
     await page.goto('/app/inbox');
     await expect(page.locator('header').getByText('Inbox', { exact: true })).toBeVisible();
     await expect(page.locator('text=Sarah Jenkins').first()).toBeVisible();
     await expect(page.locator('text=Magic Replies (IA)')).toBeVisible();
     await expect(page.locator('button:has-text("Proposer un appel")')).toBeVisible();
 
-    // 2. Check Agents Page
+    // Click on Objections filter tab
+    await page.click('button:has-text("Objections")');
+    await expect(page.locator('button:has-text("Marc-André Leclerc")')).toBeVisible();
+    await expect(page.locator('button:has-text("Sarah Jenkins")')).not.toBeVisible();
+
+    // Select Marc-André Leclerc conversation
+    await page.click('button:has-text("Marc-André Leclerc")');
+    await expect(page.locator('text=Marc-André Leclerc (LeadFlow AI)').first()).toBeVisible();
+
+    // Click a Magic Reply button
+    await page.click('button:has-text("Justifier le Tarif")');
+    
+    // Check that the textarea value is updated with the generated reply text
+    const textarea = page.locator('textarea[placeholder*="Répondre à"]');
+    await expect(textarea).not.toHaveValue('');
+    await expect(textarea).toHaveValue(/Marc-André/);
+
+    // Send the reply
+    await page.click('button:has-text("Envoyer")');
+    await expect(page.locator('text=Réponse envoyée avec succès')).toBeVisible();
+
+    // 2. Check Agents Page and Interactions
     await page.goto('/app/agents');
     await expect(page.locator('header').getByText('Agents', { exact: true })).toBeVisible();
     await expect(page.locator('text=Hermes (Sourcing Automatique)')).toBeVisible();
@@ -269,12 +290,23 @@ test.describe('Vectra E2E UI Tests', () => {
     await expect(page.locator('text=Console Terminal')).not.toBeVisible();
     await expect(page.locator('text=Crawling, Scoring, Draft generation')).not.toBeVisible();
 
-    // 3. Check Analytics Page
+    // Select a campaign using the first select element
+    await page.locator('select').first().selectOption({ index: 0 });
+
+    // Save configuration
+    await page.click('button:has-text("Enregistrer")');
+    await expect(page.locator('text=Configuration enregistrée !')).toBeVisible();
+
+    // 3. Check Analytics Page and Interactions
     await page.goto('/app/analytics');
     await expect(page.locator('header').getByText('Analytics', { exact: true })).toBeVisible();
     await expect(page.locator('text=Taux d\'Ouverture')).toBeVisible();
     await expect(page.locator('text=Taux de Réponse')).toBeVisible();
     await expect(page.locator('text=Leads Importés')).toBeVisible();
     await expect(page.locator('text=Appels Planifiés').first()).toBeVisible();
+
+    // Click refresh and verify it returns to nominal idle state
+    await page.click('button:has-text("Actualiser")');
+    await expect(page.locator('button:has-text("Actualiser")')).toBeVisible();
   });
 });
