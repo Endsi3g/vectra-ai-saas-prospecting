@@ -11,55 +11,58 @@ function generateMockOutreach(
   lead: any,
   campaign: any,
   tone: string,
-  lang: string
+  lang: string,
+  userFirstName?: string
 ) {
   const name = lead.name || 'prospect';
   const company = lead.company || 'votre entreprise';
   const angle = campaign.angle || 'audit';
   const cta = campaign.call_to_action || "échanger quelques minutes";
+  const senderFr = userFirstName || '${senderFr}';
+  const senderEn = userFirstName || '${senderEn}';
 
   const friendlyTemplates = {
     fr: {
       audit: {
         subject: `Petite idée pour la landing page de ${company} 💡`,
-        email: `Salut ${name},\n\nJ'espère que tu vas bien !\n\nJe suis tombé sur le site de ${company} en faisant des recherches sur ton secteur. Le design est super propre, mais j'ai remarqué 2-3 petites choses qui pourraient facilement doubler tes conversions (notamment sur l'appel à l'action principal et la clarté de l'offre).\n\nJ'ai préparé un mini-audit gratuit pour te montrer ça en détails. C'est cadeau, pas de pression.\n\nÇa te dirait d'en discuter lors d'un appel rapide de 15 minutes ?\n\nÀ bientôt,\n[Votre Prénom]`,
+        email: `Salut ${name},\n\nJ'espère que tu vas bien !\n\nJe suis tombé sur le site de ${company} en faisant des recherches sur ton secteur. Le design est super propre, mais j'ai remarqué 2-3 petites choses qui pourraient facilement doubler tes conversions (notamment sur l'appel à l'action principal et la clarté de l'offre).\n\nJ'ai préparé un mini-audit gratuit pour te montrer ça en détails. C'est cadeau, pas de pression.\n\nÇa te dirait d'en discuter lors d'un appel rapide de 15 minutes ?\n\nÀ bientôt,\n${senderFr}`,
         linkedin: `Salut ${name} ! J'aime beaucoup ce que vous faites chez ${company}. En regardant ton site, j'ai repéré 2 optimisations simples pour booster tes conversions de landing page. J'ai rédigé un petit audit gratuit, ça te dit d'en discuter 10 min ?`
       },
       modernization: {
         subject: `Rafraîchissement du site de ${company} ? 💻`,
-        email: `Salut ${name},\n\nJe me permets de te contacter parce que j'adore ce que vous construisez avec ${company}. En visitant ton site, je me suis dit qu'il y avait une belle opportunité de le rendre encore plus moderne et percutant pour tes clients.\n\nJe t'ai fait une petite maquette rapide de ce que pourrait donner une refonte du header pour améliorer l'impact visuel.\n\nEs-tu dispo pour un appel rapide cette semaine pour que je te montre ça ?\n\nBonne journée,\n[Votre Prénom]`,
+        email: `Salut ${name},\n\nJe me permets de te contacter parce que j'adore ce que vous construisez avec ${company}. En visitant ton site, je me suis dit qu'il y avait une belle opportunité de le rendre encore plus moderne et percutant pour tes clients.\n\nJe t'ai fait une petite maquette rapide de ce que pourrait donner une refonte du header pour améliorer l'impact visuel.\n\nEs-tu dispo pour un appel rapide cette semaine pour que je te montre ça ?\n\nBonne journée,\n${senderFr}`,
         linkedin: `Salut ${name} ! Je viens de voir le site de ${company}. J'ai imaginé une version modernisée de votre page d'accueil pour la rendre encore plus percutante. Je peux t'envoyer le visuel pour avoir ton avis ?`
       },
       automation: {
         subject: `Gagner du temps sur tes process chez ${company} ⚙️`,
-        email: `Salut ${name},\n\nJe t'écris car je travaille avec des solopreneurs et petites équipes pour automatiser les tâches répétitives et leur faire gagner 10 heures par semaine.\n\nEn regardant ${company}, je me suis dit que vous passiez sûrement beaucoup de temps à gérer vos leads et vos relances manuellement. On peut facilement brancher un système automatique simple pour ça.\n\nJe te propose de te montrer un exemple concret en 10 minutes lors d'un appel ?\n\nÀ très vite,\n[Votre Prénom]`,
+        email: `Salut ${name},\n\nJe t'écris car je travaille avec des solopreneurs et petites équipes pour automatiser les tâches répétitives et leur faire gagner 10 heures par semaine.\n\nEn regardant ${company}, je me suis dit que vous passiez sûrement beaucoup de temps à gérer vos leads et vos relances manuellement. On peut facilement brancher un système automatique simple pour ça.\n\nJe te propose de te montrer un exemple concret en 10 minutes lors d'un appel ?\n\nÀ très vite,\n${senderFr}`,
         linkedin: `Salut ${name} ! Félicitations pour le développement de ${company}. Je crée des automatisations simples pour faire gagner du temps aux équipes. Ça te dirait de voir un process clé qu'on pourrait automatiser chez toi en 10 min ?`
       },
       discovery_call: {
         subject: `Échange rapide autour de ${company} ☕`,
-        email: `Salut ${name},\n\nJe suis de près ce que vous faites chez ${company} et je trouve votre approche vraiment intéressante.\n\nJe serais curieux de comprendre vos plus gros défis du moment et voir s'il y a des synergies simples à créer entre nos activités.\n\nSerais-tu disponible pour un café virtuel de 15 minutes cette semaine ou la suivante ?\n\nAu plaisir d'échanger,\n[Votre Prénom]`,
+        email: `Salut ${name},\n\nJe suis de près ce que vous faites chez ${company} et je trouve votre approche vraiment intéressante.\n\nJe serais curieux de comprendre vos plus gros défis du moment et voir s'il y a des synergies simples à créer entre nos activités.\n\nSerais-tu disponible pour un café virtuel de 15 minutes cette semaine ou la suivante ?\n\nAu plaisir d'échanger,\n${senderFr}`,
         linkedin: `Salut ${name} ! Je suis le parcours de ${company} avec attention. Je serais ravi de faire ta connaissance et d'échanger sur nos enjeux respectifs. Es-tu ouvert à un rapide appel de 15 min ?`
       }
     },
     en: {
       audit: {
         subject: `Quick idea for ${company}'s landing page 💡`,
-        email: `Hi ${name},\n\nHope you're doing great!\n\nI was checking out ${company}'s website and love what you're doing. I noticed 2-3 quick conversion tweaks that could help turn more visitors into clients (especially around your primary CTA).\n\nI put together a short, free audit showing exactly what I mean. No strings attached.\n\nWould you be open to a quick 15-minute call to go over it?\n\nBest,\n[Your Name]`,
+        email: `Hi ${name},\n\nHope you're doing great!\n\nI was checking out ${company}'s website and love what you're doing. I noticed 2-3 quick conversion tweaks that could help turn more visitors into clients (especially around your primary CTA).\n\nI put together a short, free audit showing exactly what I mean. No strings attached.\n\nWould you be open to a quick 15-minute call to go over it?\n\nBest,\n${senderEn}`,
         linkedin: `Hi ${name}! Really cool stuff at ${company}. I reviewed your website and found 2 simple fixes to increase conversions. I made a free mini-audit for you—open to a quick 10-minute chat about it?`
       },
       modernization: {
         subject: `Modernizing ${company}'s web design? 💻`,
-        email: `Hi ${name},\n\nI'm reaching out because I love the brand you're building with ${company}. Looking at your website, I think there is a great opportunity to make the layout feel even sleeker and more engaging.\n\nI designed a quick mockup of how a modern header refresh could look for your homepage.\n\nAre you free for a brief call this week so I can share it with you?\n\nBest,\n[Your Name]`,
+        email: `Hi ${name},\n\nI'm reaching out because I love the brand you're building with ${company}. Looking at your website, I think there is a great opportunity to make the layout feel even sleeker and more engaging.\n\nI designed a quick mockup of how a modern header refresh could look for your homepage.\n\nAre you free for a brief call this week so I can share it with you?\n\nBest,\n${senderEn}`,
         linkedin: `Hi ${name}! Just saw the site for ${company}. I sketched a quick modernized version of your homepage to help improve visitor trust. Can I send you the link to see what you think?`
       },
       automation: {
         subject: `Saving time on your workflows at ${company} ⚙️`,
-        email: `Hi ${name},\n\nI work with solopreneurs and small teams to automate manual, repetitive tasks and save them about 10 hours a week.\n\nLooking at ${company}, you might be spending a lot of time on manual lead sorting or followups. We can easily automate that workflow.\n\nI'd love to show you a quick example on a 15-minute call. Let me know if you're open to it!\n\nCheers,\n[Your Name]`,
+        email: `Hi ${name},\n\nI work with solopreneurs and small teams to automate manual, repetitive tasks and save them about 10 hours a week.\n\nLooking at ${company}, you might be spending a lot of time on manual lead sorting or followups. We can easily automate that workflow.\n\nI'd love to show you a quick example on a 15-minute call. Let me know if you're open to it!\n\nCheers,\n${senderEn}`,
         linkedin: `Hi ${name}! Congrats on ${company}. I build custom automations to eliminate repetitive tasks. Would you be open to a 10-minute call to see how we could save you a few hours each week?`
       },
       discovery_call: {
         subject: `Quick chat about ${company} ☕`,
-        email: `Hi ${name},\n\nI've been following ${company} and really enjoy your approach to the market.\n\nI'd love to learn more about your current focus and see if there are simple ways we could collaborate or support each other.\n\nAre you open to a quick 15-minute virtual coffee this week?\n\nBest,\n[Your Name]`,
+        email: `Hi ${name},\n\nI've been following ${company} and really enjoy your approach to the market.\n\nI'd love to learn more about your current focus and see if there are simple ways we could collaborate or support each other.\n\nAre you open to a quick 15-minute virtual coffee this week?\n\nBest,\n${senderEn}`,
         linkedin: `Hi ${name}! Following ${company}'s progress with interest. Would love to connect and share some insights on our space. Are you up for a quick 15-minute intro call?`
       }
     }
@@ -69,44 +72,44 @@ function generateMockOutreach(
     fr: {
       audit: {
         subject: `Audit de conversion pour le site de ${company}`,
-        email: `Bonjour ${name},\n\nJe me permets de vous contacter après avoir visité le site internet de ${company}.\n\nDans le cadre de mon activité, j'aide les entreprises à optimiser leurs pages de vente. En analysant votre site, j'ai identifié deux leviers concrets qui permettraient d'améliorer votre taux de conversion (particulièrement au niveau de la structure du header et des formulaires).\n\nJ'ai rédigé un document d'audit synthétique reprenant ces recommandations.\n\nSeriez-vous disponible pour un court entretien de 15 minutes afin de parcourir ces points ?\n\nBien cordialement,\n[Votre Prénom]`,
+        email: `Bonjour ${name},\n\nJe me permets de vous contacter après avoir visité le site internet de ${company}.\n\nDans le cadre de mon activité, j'aide les entreprises à optimiser leurs pages de vente. En analysant votre site, j'ai identifié deux leviers concrets qui permettraient d'améliorer votre taux de conversion (particulièrement au niveau de la structure du header et des formulaires).\n\nJ'ai rédigé un document d'audit synthétique reprenant ces recommandations.\n\nSeriez-vous disponible pour un court entretien de 15 minutes afin de parcourir ces points ?\n\nBien cordialement,\n${senderFr}`,
         linkedin: `Bonjour ${name}, j'ai parcouru le site de ${company} avec beaucoup d'intérêt. J'ai préparé un court audit gratuit contenant 2 recommandations pour optimiser vos taux de conversion. Seriez-vous ouvert à un rapide échange cette semaine pour en discuter ?`
       },
       modernization: {
         subject: `Modernisation de l'identité web de ${company}`,
-        email: `Bonjour ${name},\n\nJe prends contact avec vous car je suis attentivement le développement de ${company}. Votre positionnement est excellent, et je pense qu'une interface web modernisée permettrait d'augmenter significativement la valeur perçue de vos services.\n\nJe me suis permis de réaliser une première maquette de refonte de votre page d'accueil afin d'illustrer mon propos.\n\nPourrions-nous convenir d'un rendez-vous téléphonique de 15 minutes pour que je vous présente cette proposition ?\n\nCordialement,\n[Votre Prénom]`,
+        email: `Bonjour ${name},\n\nJe prends contact avec vous car je suis attentivement le développement de ${company}. Votre positionnement est excellent, et je pense qu'une interface web modernisée permettrait d'augmenter significativement la valeur perçue de vos services.\n\nJe me suis permis de réaliser une première maquette de refonte de votre page d'accueil afin d'illustrer mon propos.\n\nPourrions-nous convenir d'un rendez-vous téléphonique de 15 minutes pour que je vous présente cette proposition ?\n\nCordialement,\n${senderFr}`,
         linkedin: `Bonjour ${name}, je suis le développement de ${company} de près. J'ai conçu un prototype visuel moderne pour votre page d'accueil afin de renforcer la confiance de vos visiteurs. Puis-je vous le partager pour recueillir vos retours ?`
       },
       automation: {
         subject: `Optimisation des processus opérationnels chez ${company}`,
-        email: `Bonjour ${name},\n\nJe vous écris car j'accompagne les entreprises et les dirigeants dans l'automatisation de leurs processus répétitifs, ce qui leur permet de libérer plusieurs heures chaque semaine.\n\nAu vu de l'activité de ${company}, il semble y avoir des opportunités intéressantes pour automatiser la gestion des contacts ou le suivi client.\n\nJe serais ravi de vous présenter un cas d'usage similaire lors d'un appel de 15 minutes.\n\nBien cordialement,\n[Votre Prénom]`,
+        email: `Bonjour ${name},\n\nJe vous écris car j'accompagne les entreprises et les dirigeants dans l'automatisation de leurs processus répétitifs, ce qui leur permet de libérer plusieurs heures chaque semaine.\n\nAu vu de l'activité de ${company}, il semble y avoir des opportunités intéressantes pour automatiser la gestion des contacts ou le suivi client.\n\nJe serais ravi de vous présenter un cas d'usage similaire lors d'un appel de 15 minutes.\n\nBien cordialement,\n${senderFr}`,
         linkedin: `Bonjour ${name}, j'aide les structures comme ${company} à éliminer les tâches répétitives en intégrant des automatisations. Seriez-vous disponible pour un échange de 10 minutes afin de voir comment optimiser vos flux de travail ?`
       },
       discovery_call: {
         subject: `Opportunité d'échange - ${company}`,
-        email: `Bonjour ${name},\n\nJe suis le parcours de ${company} et apprécie particulièrement vos dernières réalisations.\n\nJe serais ravi de planifier un court échange afin de mieux comprendre vos objectifs de croissance et d'identifier d'éventuelles synergies professionnelles.\n\nAuriez-vous des disponibilités pour un appel de 15 minutes au cours des prochains jours ?\n\nRespectueusement,\n[Votre Prénom]`,
+        email: `Bonjour ${name},\n\nJe suis le parcours de ${company} et apprécie particulièrement vos dernières réalisations.\n\nJe serais ravi de planifier un court échange afin de mieux comprendre vos objectifs de croissance et d'identifier d'éventuelles synergies professionnelles.\n\nAuriez-vous des disponibilités pour un appel de 15 minutes au cours des prochains jours ?\n\nRespectueusement,\n${senderFr}`,
         linkedin: `Bonjour ${name}, je suis très impressionné par la trajectoire de ${company}. J'aimerais faire votre connaissance pour en savoir plus sur votre vision et vos défis. Seriez-vous ouvert à un échange téléphonique de 15 minutes ?`
       }
     },
     en: {
       audit: {
         subject: `Conversion audit for ${company}'s website`,
-        email: `Hello ${name},\n\nI am reaching out after reviewing ${company}'s website.\n\nI help businesses optimize their sales pages to convert visitors into active clients. After looking at your homepage, I identified two areas where you could significantly increase conversions (notably your hero layout and primary CTA placement).\n\nI have prepared a brief, actionable audit with these suggestions.\n\nWould you be available for a brief 15-minute call to review these points?\n\nSincerely,\n[Your Name]`,
+        email: `Hello ${name},\n\nI am reaching out after reviewing ${company}'s website.\n\nI help businesses optimize their sales pages to convert visitors into active clients. After looking at your homepage, I identified two areas where you could significantly increase conversions (notably your hero layout and primary CTA placement).\n\nI have prepared a brief, actionable audit with these suggestions.\n\nWould you be available for a brief 15-minute call to review these points?\n\nSincerely,\n${senderEn}`,
         linkedin: `Hello ${name}, I reviewed ${company}'s website with interest. I prepared a brief, free conversion audit with 2 suggestions to help boost signups. Would you be open to a quick 10-minute call to discuss it?`
       },
       modernization: {
         subject: `Web design modernization for ${company}`,
-        email: `Hello ${name},\n\nI am contacting you because I follow ${company}'s growth closely. You have a very compelling offer, and I believe a modernized website interface would help elevate your brand position and client trust.\n\nI went ahead and designed a quick homepage layout prototype to show you what is possible.\n\nCould we schedule a short 15-minute call this week for me to walk you through it?\n\nBest regards,\n[Your Name]`,
+        email: `Hello ${name},\n\nI am contacting you because I follow ${company}'s growth closely. You have a very compelling offer, and I believe a modernized website interface would help elevate your brand position and client trust.\n\nI went ahead and designed a quick homepage layout prototype to show you what is possible.\n\nCould we schedule a short 15-minute call this week for me to walk you through it?\n\nBest regards,\n${senderEn}`,
         linkedin: `Hello ${name}, I follow ${company}'s work with interest. I created a sleek modern homepage mockup to help increase visitor trust. May I send you the link to get your feedback?`
       },
       automation: {
         subject: `Workflow automation opportunities at ${company}`,
-        email: `Hello ${name},\n\nI help growing businesses integrate automation workflows to eliminate manual data entry and save hours of repetitive admin work each week.\n\nBased on ${company}'s model, there could be great value in automating your lead logging or customer email notifications.\n\nI would love to demonstrate a similar setup on a brief 15-minute call. Let me know if you have availability!\n\nBest regards,\n[Your Name]`,
+        email: `Hello ${name},\n\nI help growing businesses integrate automation workflows to eliminate manual data entry and save hours of repetitive admin work each week.\n\nBased on ${company}'s model, there could be great value in automating your lead logging or customer email notifications.\n\nI would love to demonstrate a similar setup on a brief 15-minute call. Let me know if you have availability!\n\nBest regards,\n${senderEn}`,
         linkedin: `Hello ${name}, I help companies like ${company} streamline operations by automating repetitive tasks. Would you be open to a 10-minute call to see if we can optimize some of your manual processes?`
       },
       discovery_call: {
         subject: `Introduction call - ${company}`,
-        email: `Hello ${name},\n\nI am following ${company}'s journey and appreciate your recent achievements.\n\nI would love to schedule a brief introductory call to understand your growth objectives and see if there are mutual opportunities for collaboration.\n\nWould you be open to a 15-minute call next week?\n\nWarm regards,\n[Your Name]`,
+        email: `Hello ${name},\n\nI am following ${company}'s journey and appreciate your recent achievements.\n\nI would love to schedule a brief introductory call to understand your growth objectives and see if there are mutual opportunities for collaboration.\n\nWould you be open to a 15-minute call next week?\n\nWarm regards,\n${senderEn}`,
         linkedin: `Hello ${name}, I am impressed by ${company}'s growth. I'd love to connect briefly to learn more about your focus and share insights on our industry. Are you open to a quick 15-minute call?`
       }
     }
@@ -116,44 +119,44 @@ function generateMockOutreach(
     fr: {
       audit: {
         subject: `Proposition d'audit d'optimisation pour le site internet de ${company}`,
-        email: `Bonjour ${name},\n\nJe me permets de vous contacter à la suite d'une étude attentive de la présence en ligne de la société ${company}.\n\nSpécialiste de l'optimisation des parcours utilisateurs, j'ai relevé deux opportunités concrètes sur votre site internet qui permettraient d'améliorer l'engagement de vos visiteurs (notamment la hiérarchisation de votre offre principale).\n\nJ'ai formalisé ces analyses dans un court document d'audit gratuit que je serais ravi de vous soumettre.\n\nAuriez-vous l'amabilité de m'indiquer vos disponibilités pour un échange téléphonique de 20 minutes ?\n\nJe vous prie d'agréer, ${name}, l'expression de mes salutations distinguées.\n\n[Votre Prénom]`,
+        email: `Bonjour ${name},\n\nJe me permets de vous contacter à la suite d'une étude attentive de la présence en ligne de la société ${company}.\n\nSpécialiste de l'optimisation des parcours utilisateurs, j'ai relevé deux opportunités concrètes sur votre site internet qui permettraient d'améliorer l'engagement de vos visiteurs (notamment la hiérarchisation de votre offre principale).\n\nJ'ai formalisé ces analyses dans un court document d'audit gratuit que je serais ravi de vous soumettre.\n\nAuriez-vous l'amabilité de m'indiquer vos disponibilités pour un échange téléphonique de 20 minutes ?\n\nJe vous prie d'agréer, ${name}, l'expression de mes salutations distinguées.\n\n${senderFr}`,
         linkedin: `Bonjour ${name}. J'ai examiné avec beaucoup d'attention le site de la société ${company}. J'ai pris l'initiative de rédiger un audit gratuit contenant deux pistes d'optimisation de vos taux de conversion. Seriez-vous disposé à convenir d'un bref entretien pour en prendre connaissance ?`
       },
       modernization: {
         subject: `Étude de modernisation de la vitrine numérique de ${company}`,
-        email: `Bonjour ${name},\n\nJe vous contacte afin de saluer le développement de ${company}, dont je suis la progression avec intérêt. Dans l'optique de maximiser votre impact de marque, il me semble qu'une modernisation de votre design web permettrait d'accroître votre taux de conversion.\n\nJ'ai conçu une maquette conceptuelle illustrant cette opportunité pour votre page d'accueil.\n\nSerait-il possible de planifier un appel de 20 minutes afin que je puisse vous la présenter ?\n\nAvec mes salutations distinguées,\n[Votre Prénom]`,
+        email: `Bonjour ${name},\n\nJe vous contacte afin de saluer le développement de ${company}, dont je suis la progression avec intérêt. Dans l'optique de maximiser votre impact de marque, il me semble qu'une modernisation de votre design web permettrait d'accroître votre taux de conversion.\n\nJ'ai conçu une maquette conceptuelle illustrant cette opportunité pour votre page d'accueil.\n\nSerait-il possible de planifier un appel de 20 minutes afin que je puisse vous la présenter ?\n\nAvec mes salutations distinguées,\n${senderFr}`,
         linkedin: `Bonjour ${name}. Suivant l'évolution de la société ${company}, j'ai créé une proposition de design modernisée pour votre page d'accueil dans le but de renforcer la confiance de vos visiteurs. Puis-je solliciter un court échange pour vous présenter ce visuel ?`
       },
       automation: {
         subject: `Audit des processus d'automatisation pour ${company}`,
-        email: `Bonjour ${name},\n\nJe me permets de vous solliciter car j'accompagne les dirigeants dans l'optimisation et l'automatisation de leurs processus métiers répétitifs, afin d'optimiser leurs coûts opérationnels.\n\nÀ l'examen des services de ${company}, j'ai modélisé un flux de travail automatisé concernant la gestion des leads qui pourrait vous faire économiser plusieurs heures de gestion hebdomadaire.\n\nSeriez-vous disponible pour un appel de 20 minutes afin que je vous expose ce cas d'école ?\n\nBien respectueusement,\n[Votre Prénom]`,
+        email: `Bonjour ${name},\n\nJe me permets de vous solliciter car j'accompagne les dirigeants dans l'optimisation et l'automatisation de leurs processus métiers répétitifs, afin d'optimiser leurs coûts opérationnels.\n\nÀ l'examen des services de ${company}, j'ai modélisé un flux de travail automatisé concernant la gestion des leads qui pourrait vous faire économiser plusieurs heures de gestion hebdomadaire.\n\nSeriez-vous disponible pour un appel de 20 minutes afin que je vous expose ce cas d'école ?\n\nBien respectueusement,\n${senderFr}`,
         linkedin: `Bonjour ${name}. J'aide les dirigeants à optimiser leur efficacité opérationnelle par le biais d'automatisations de processus. Seriez-vous ouvert à un entretien de 15 minutes afin d'analyser les pistes d'amélioration applicables à ${company} ?`
       },
       discovery_call: {
         subject: `Demande de prise de contact professionnelle - ${company}`,
-        email: `Bonjour ${name},\n\nJe suis l'évolution de ${company} et tiens à vous féliciter pour vos récents succès sur le marché.\n\nDans le but d'élargir mon réseau professionnel et d'explorer d'éventuelles synergies entre nos activités respectives, je serais honoré de pouvoir nous entretenir brièvement.\n\nSeriez-vous disposé à m'accorder un entretien téléphonique de 15 minutes au cours des prochains jours ?\n\nJe vous prie d'agréer, ${name}, mes salutations les plus respectueuses.\n\n[Votre Prénom]`,
+        email: `Bonjour ${name},\n\nJe suis l'évolution de ${company} et tiens à vous féliciter pour vos récents succès sur le marché.\n\nDans le but d'élargir mon réseau professionnel et d'explorer d'éventuelles synergies entre nos activités respectives, je serais honoré de pouvoir nous entretenir brièvement.\n\nSeriez-vous disposé à m'accorder un entretien téléphonique de 15 minutes au cours des prochains jours ?\n\nJe vous prie d'agréer, ${name}, mes salutations les plus respectueuses.\n\n${senderFr}`,
         linkedin: `Bonjour ${name}. Impressionné par les accomplissements de ${company}, j'aimerais vous proposer un entretien de 15 minutes afin de faire votre connaissance et d'échanger sur l'évolution de notre secteur d'activité. Je vous remercie pour votre attention.`
       }
     },
     en: {
       audit: {
         subject: `Conversion optimization audit for ${company}`,
-        email: `Dear ${name},\n\nI am contacting you following an analysis of the digital interface of the company ${company}.\n\nAs a conversion rate optimization specialist, I have identified two primary opportunities on your website to enhance user engagement and client onboarding (specifically concerning the placement of your primary call to action).\n\nI have compiled these findings into a short, complimentary audit report.\n\nWould you be available for a 20-minute discussion to review these recommendations?\n\nSincerely yours,\n[Your Name]`,
+        email: `Dear ${name},\n\nI am contacting you following an analysis of the digital interface of the company ${company}.\n\nAs a conversion rate optimization specialist, I have identified two primary opportunities on your website to enhance user engagement and client onboarding (specifically concerning the placement of your primary call to action).\n\nI have compiled these findings into a short, complimentary audit report.\n\nWould you be available for a 20-minute discussion to review these recommendations?\n\nSincerely yours,\n${senderEn}`,
         linkedin: `Dear ${name}, I have reviewed ${company}'s website in detail. I have taken the liberty of drafting a conversion audit with 2 key suggestions for your digital acquisition. Would you be open to a brief call to discuss these findings?`
       },
       modernization: {
         subject: `Proposed website modernization for ${company}`,
-        email: `Dear ${name},\n\nI am writing to you as I follow the progress of ${company} with great interest. To support your growth, I believe a modern web design refresh would serve to elevate your market positioning and foster client confidence.\n\nI have created a design prototype for your homepage layout to demonstrate this potential.\n\nCould we schedule a 20-minute call next week to present this concept to you?\n\nRespectfully,\n[Your Name]`,
+        email: `Dear ${name},\n\nI am writing to you as I follow the progress of ${company} with great interest. To support your growth, I believe a modern web design refresh would serve to elevate your market positioning and foster client confidence.\n\nI have created a design prototype for your homepage layout to demonstrate this potential.\n\nCould we schedule a 20-minute call next week to present this concept to you?\n\nRespectfully,\n${senderEn}`,
         linkedin: `Dear ${name}, following the growth of ${company}, I have drafted a modernized homepage mockup designed to enhance user trust and conversion rates. May I send you the link to discuss your impressions?`
       },
       automation: {
         subject: `Workflow automation audit for ${company}`,
-        email: `Dear ${name},\n\nI am writing to you because I specialize in helping businesses implement workflow automation to reduce manual, repetitive operations and save overhead hours.\n\nAnalyzing the model of ${company}, I believe there is significant potential in automating your sales log routing and client scheduling operations.\n\nWould you be available for a 20-minute call to review a potential workflow map?\n\nRespectfully,\n[Your Name]`,
+        email: `Dear ${name},\n\nI am writing to you because I specialize in helping businesses implement workflow automation to reduce manual, repetitive operations and save overhead hours.\n\nAnalyzing the model of ${company}, I believe there is significant potential in automating your sales log routing and client scheduling operations.\n\nWould you be available for a 20-minute call to review a potential workflow map?\n\nRespectfully,\n${senderEn}`,
         linkedin: `Dear ${name}, I help companies optimize efficiency through custom workflow automation. Would you be open to a 15-minute call to evaluate potential optimizations for ${company}'s internal workflows?`
       },
       discovery_call: {
         subject: `Professional inquiry - ${company}`,
-        email: `Dear ${name},\n\nI am following the development of ${company} and would like to congratulate you on your recent progress.\n\nI would be pleased to schedule a short introductory call to learn more about your strategic directions and explore potential synergies between our firms.\n\nWould you have availability for a 15-minute call in the coming days?\n\nSincerely,\n[Your Name]`,
+        email: `Dear ${name},\n\nI am following the development of ${company} and would like to congratulate you on your recent progress.\n\nI would be pleased to schedule a short introductory call to learn more about your strategic directions and explore potential synergies between our firms.\n\nWould you have availability for a 15-minute call in the coming days?\n\nSincerely,\n${senderEn}`,
         linkedin: `Dear ${name}, I am impressed by the development of ${company}. I would be glad to schedule a 15-minute call to make your acquaintance and exchange thoughts on our industry. Thank you for your consideration.`
       }
     }
@@ -209,6 +212,7 @@ export async function POST(req: Request) {
     let userId = requestUserId;
     let tone = 'professional';
     let preferredLanguages = ['fr', 'en'];
+    let userFirstName: string | undefined;
 
     if (!userId) {
       const authHeader = req.headers.get('Authorization');
@@ -238,13 +242,14 @@ export async function POST(req: Request) {
     if (userId) {
       const { data: profile } = await supabaseAdmin
         .from('profiles')
-        .select('tone, preferred_languages')
+        .select('tone, preferred_languages, first_name')
         .eq('id', userId)
         .single();
-      
+
       if (profile) {
         tone = profile.tone || tone;
         preferredLanguages = profile.preferred_languages || preferredLanguages;
+        userFirstName = profile.first_name || undefined;
       }
     }
 
@@ -307,7 +312,7 @@ Tone constraint: ${tone}
 You MUST output exactly a JSON object (no markdown wrappers) with:
 - summary: a short summary of the prospect (1-2 sentences)
 - email_subject: an eye-catching email subject line
-- email_body: personalized email copy (use [Votre Prénom] or [Your Name] for signature)
+- email_body: personalized email copy (sign with the sender name: ${userFirstName || 'the user'})
 - linkedin_message: personalized short LinkedIn connection request message
 - personalization_score: integer from 80 to 100 based on fit.`;
 
@@ -350,11 +355,11 @@ Notes/ICP context: ${lead.notes || 'N/A'}`;
               }
             } catch (err) {
               console.warn('Real OpenAI call failed, falling back to local mock template:', err);
-              generated = generateMockOutreach(lead, campaignDetails, tone, lang);
+              generated = generateMockOutreach(lead, campaignDetails, tone, lang, userFirstName);
             }
           } else {
             // Fallback mock generation
-            generated = generateMockOutreach(lead, campaignDetails, tone, lang);
+            generated = generateMockOutreach(lead, campaignDetails, tone, lang, userFirstName);
           }
 
           // Save/Create Lead in Supabase campaigns context

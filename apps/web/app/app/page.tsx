@@ -22,7 +22,7 @@ import {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [userName, setUserName] = useState('Kael');
+  const [userName, setUserName] = useState('');
   const [chartRange, setChartRange] = useState<'daily' | 'weekly'>('daily');
   const [totalLists, setTotalLists] = useState(0);
   const [candidatesSaved, setCandidatesSaved] = useState(0);
@@ -33,64 +33,41 @@ export default function DashboardPage() {
     const fetchUserAndStats = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          setUserName(user.email?.split('@')[0] || 'Kael');
+        if (!user) return;
 
-          // 1. Total Searches
-          const { count: campaignsCount } = await supabase
-            .from('campaigns')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', user.id);
-          
-          if (campaignsCount !== null && campaignsCount > 0) {
-            setTotalSearches(campaignsCount);
-          }
+        // Parallelize profile + campaigns + collections fetches
+        const [profileRes, campaignsRes, collectionsRes] = await Promise.all([
+          supabase.from('profiles').select('first_name').eq('id', user.id).single(),
+          supabase.from('campaigns').select('id').eq('user_id', user.id),
+          supabase.from('collections').select('*', { count: 'exact', head: true }).eq('user_id', user.id)
+        ]);
 
-          // 2. Candidates Saved (leads count)
-          const { data: userCampaigns } = await supabase
-            .from('campaigns')
-            .select('id')
-            .eq('user_id', user.id);
+        setUserName(profileRes.data?.first_name || user.email?.split('@')[0] || 'vous');
+        if (collectionsRes.count !== null) setTotalLists(collectionsRes.count);
 
-          if (userCampaigns && userCampaigns.length > 0) {
-            const campaignIds = userCampaigns.map(c => c.id);
-            const { count: leadsCount } = await supabase
-              .from('leads')
+        const userCampaigns = campaignsRes.data || [];
+        setTotalSearches(userCampaigns.length || 0);
+
+        if (userCampaigns.length > 0) {
+          const campaignIds = userCampaigns.map(c => c.id);
+
+          // Parallelize leads + outreach counts
+          const [leadsRes, leadsForOutreachRes] = await Promise.all([
+            supabase.from('leads').select('*', { count: 'exact', head: true }).in('campaign_id', campaignIds),
+            supabase.from('leads').select('id').in('campaign_id', campaignIds)
+          ]);
+
+          if (leadsRes.count !== null) setCandidatesSaved(leadsRes.count);
+
+          const leadIds = (leadsForOutreachRes.data || []).map((l: any) => l.id);
+          if (leadIds.length > 0) {
+            const { count: outreachCount } = await supabase
+              .from('messages')
               .select('*', { count: 'exact', head: true })
-              .in('campaign_id', campaignIds);
+              .in('lead_id', leadIds)
+              .in('status', ['approved', 'sent']);
 
-            if (leadsCount !== null) {
-              setCandidatesSaved(leadsCount);
-            }
-
-            // 3. Candidates Outreached
-            const { data: userLeads } = await supabase
-              .from('leads')
-              .select('id')
-              .in('campaign_id', campaignIds);
-
-            if (userLeads && userLeads.length > 0) {
-              const leadIds = userLeads.map(l => l.id);
-              const { count: outreachCount } = await supabase
-                .from('messages')
-                .select('*', { count: 'exact', head: true })
-                .in('lead_id', leadIds)
-                .in('status', ['approved', 'sent']);
-
-              if (outreachCount !== null) {
-                setCandidatesOutreached(outreachCount);
-              }
-            }
-          }
-
-          // 4. Total Lists (Collections count)
-          const { count: collectionsCount } = await supabase
-            .from('collections')
-            .select('*', { count: 'exact', head: true })
-            .eq('user_id', user.id);
-
-          if (collectionsCount !== null) {
-            setTotalLists(collectionsCount);
+            if (outreachCount !== null) setCandidatesOutreached(outreachCount);
           }
         }
       } catch (err) {

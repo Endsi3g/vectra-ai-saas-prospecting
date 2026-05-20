@@ -231,3 +231,64 @@ CREATE POLICY "Users can manage messages of their own conversations"
               AND public.campaigns.user_id = auth.uid()
         )
     );
+
+
+-- Create lead_collections junction table (many-to-many: leads ↔ collections)
+CREATE TABLE public.lead_collections (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id UUID NOT NULL REFERENCES public.leads(id) ON DELETE CASCADE,
+    collection_id UUID NOT NULL REFERENCES public.collections(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE (lead_id, collection_id)
+);
+
+-- Enable RLS on lead_collections
+ALTER TABLE public.lead_collections ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own lead_collections"
+    ON public.lead_collections
+    FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.leads
+            JOIN public.campaigns ON public.campaigns.id = public.leads.campaign_id
+            WHERE public.leads.id = public.lead_collections.lead_id
+              AND public.campaigns.user_id = auth.uid()
+        )
+    );
+
+
+-- Create follow_ups table
+CREATE TABLE public.follow_ups (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id UUID NOT NULL REFERENCES public.leads(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'prospect' CHECK (status IN ('prospect', 'qualifie', 'message_envoye', 'reponse_recue', 'appel_planifie', 'deal_conclu')),
+    follow_up_date DATE,
+    notes TEXT,
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE (lead_id)
+);
+
+-- Enable RLS on follow_ups
+ALTER TABLE public.follow_ups ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage follow_ups of their own leads"
+    ON public.follow_ups
+    FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.leads
+            JOIN public.campaigns ON public.campaigns.id = public.leads.campaign_id
+            WHERE public.leads.id = public.follow_ups.lead_id
+              AND public.campaigns.user_id = auth.uid()
+        )
+    );
+
+
+-- Add agent_config column to profiles for storing agent preferences
+ALTER TABLE public.profiles
+    ADD COLUMN IF NOT EXISTS agent_config JSONB DEFAULT '{}'::jsonb;
+
+-- Add email column to profiles (mirrors auth.users.email for convenience)
+ALTER TABLE public.profiles
+    ADD COLUMN IF NOT EXISTS email TEXT;

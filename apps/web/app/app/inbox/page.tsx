@@ -51,88 +51,16 @@ export default function InboxPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState<'all' | 'interested' | 'objection' | 'unsubscribe'>('all');
-  const [selectedConvId, setSelectedConvId] = useState<string>('conv-1');
-  
+  const [selectedConvId, setSelectedConvId] = useState<string>('');
+
   // Custom replies generator state
   const [replyText, setReplyText] = useState('');
   const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
+  const [loadingConversations, setLoadingConversations] = useState(true);
 
-  // Initial mock conversations
-  const [conversations, setConversations] = useState<Conversation[]>([
-    {
-      id: 'conv-1',
-      prospectName: 'Sarah Jenkins',
-      company: 'TechRecruit',
-      website: 'techrecruit.io',
-      email: 'sarah@techrecruit.io',
-      campaign: 'SaaS Founders - Canada',
-      matchScore: 94,
-      sentiment: 'interested',
-      lastMessage: 'Ça m’intéresse de tester votre audit. Vous avez un créneau ce jeudi ?',
-      time: '10:24',
-      messages: [
-        {
-          sender: 'user',
-          text: "Bonjour Sarah,\n\nJ'ai analysé techrecruit.io et j'ai adoré vos flux de recrutement automatique. Cependant, j'ai remarqué quelques frictions sur votre page de tarification qui pourraient vous faire perdre des conversions.\n\nJe vous ai préparé un audit vidéo rapide de 3 minutes avec 3 conseils concrets de design. Êtes-vous ouverte à ce que je vous l'envoie ?\n\nCordialement,\nKael",
-          timestamp: 'Hier, 14:15'
-        },
-        {
-          sender: 'prospect',
-          text: 'Bonjour Kael, merci pour l’intérêt porté à TechRecruit ! Oui, ça m’intéresse carrément de tester votre audit pour améliorer nos conversions. Vous auriez un créneau ce jeudi après-midi pour en parler en direct ?',
-          timestamp: 'Aujourd\'hui, 10:24'
-        }
-      ]
-    },
-    {
-      id: 'conv-2',
-      prospectName: 'Marc-André Leclerc',
-      company: 'LeadFlow AI',
-      website: 'leadflowai.com',
-      email: 'marc@leadflowai.com',
-      campaign: 'SaaS Founders - Canada',
-      matchScore: 88,
-      sentiment: 'objection',
-      lastMessage: 'Merci pour les conseils, mais quelle est votre tarification exacte ?',
-      time: 'Hier',
-      messages: [
-        {
-          sender: 'user',
-          text: "Bonjour Marc-André,\n\nFélicitations pour la croissance de LeadFlow AI. En parcourant votre site, j'ai vu que vos formulaires de contact n'étaient pas optimisés pour le mobile.\n\nJe me demandais si vous aviez 10 minutes pour que je vous montre comment capter 20% de leads qualifiés supplémentaires ?\n\nBonne semaine,\nKael",
-          timestamp: 'Il y a 2 jours'
-        },
-        {
-          sender: 'prospect',
-          text: 'Hello Kael, merci pour les retours sur le mobile, c’est bien vu. Par contre on a un budget très serré ce trimestre. Quelle est votre tarification exacte pour ce genre d’optimisation ?',
-          timestamp: 'Hier, 16:40'
-        }
-      ]
-    },
-    {
-      id: 'conv-3',
-      prospectName: 'Alexandre Dupont',
-      company: 'DevPulse',
-      website: 'devpulse.co',
-      email: 'alex@devpulse.co',
-      campaign: 'SaaS Founders - Canada',
-      matchScore: 79,
-      sentiment: 'unsubscribe',
-      lastMessage: 'Veuillez me retirer de votre liste de diffusion, merci.',
-      time: 'Il y a 3 jours',
-      messages: [
-        {
-          sender: 'user',
-          text: "Bonjour Alexandre,\n\nJ'ai vu votre récente levée de fonds en Pre-Seed pour DevPulse, bravo ! J'ai rédigé quelques recommandations de design pour moderniser votre tableau de bord.\n\nSeriez-vous curieux de les voir ?\n\nÀ bientôt,\nKael",
-          timestamp: 'Il y a 4 jours'
-        },
-        {
-          sender: 'prospect',
-          text: 'Veuillez me retirer de votre liste de diffusion, merci.',
-          timestamp: 'Il y a 3 jours'
-        }
-      ]
-    }
-  ]);
+  // Conversations loaded from Supabase — starts empty, populated by useEffect
+  const [conversations, setConversations] = useState<Conversation[]>([]);
 
   useEffect(() => {
     const fetchRealConversations = async () => {
@@ -159,63 +87,56 @@ export default function InboxPage() {
 
         if (convError) throw convError;
 
-        if (dbConversations && dbConversations.length > 0) {
-          const formatted: Conversation[] = dbConversations.map((c: any) => {
-            const lead = c.lead || {};
-            const campaign = lead.campaign || {};
-            
-            // Map messages
-            const msgs = (c.messages || [])
-              .sort((m1: any, m2: any) => new Date(m1.created_at).getTime() - new Date(m2.created_at).getTime())
-              .map((m: any) => ({
-                sender: m.sender_type,
-                text: m.body,
-                timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-                magicReply: m.magic_reply_draft // Keep a ref to the pre-generated Magic Reply draft!
-              }));
+        const formatted: Conversation[] = (dbConversations || []).map((c: any) => {
+          const lead = c.lead || {};
+          const campaign = lead.campaign || {};
 
-            return {
-              id: c.id,
-              prospectName: lead.name || 'Prospect Anonyme',
-              company: lead.company || 'Entreprise',
-              website: lead.website || '',
-              email: lead.email || '',
-              campaign: campaign.name || 'Campagne Directe',
-              matchScore: 92, // mock score
-              sentiment: c.sentiment,
-              lastMessage: c.last_message_text || '',
-              time: new Date(c.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              messages: msgs
-            };
-          });
+          const msgs = (c.messages || [])
+            .sort((m1: any, m2: any) => new Date(m1.created_at).getTime() - new Date(m2.created_at).getTime())
+            .map((m: any) => ({
+              sender: m.sender_type,
+              text: m.body,
+              timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              magicReply: m.magic_reply_draft
+            }));
 
-          setConversations(prev => {
-            // Filter out old real conversations to avoid duplication, keep the templates 1, 2, 3
-            const templateIds = ['conv-1', 'conv-2', 'conv-3'];
-            const templates = prev.filter(c => templateIds.includes(c.id));
-            return [...formatted, ...templates];
-          });
-          
-          setSelectedConvId(prevId => {
-            if (prevId === 'conv-1' && formatted.length > 0 && formatted[0]) {
-              return formatted[0].id;
-            }
-            return prevId;
-          });
+          return {
+            id: c.id,
+            prospectName: lead.name || 'Prospect Anonyme',
+            company: lead.company || 'Entreprise',
+            website: lead.website || '',
+            email: lead.email || '',
+            campaign: campaign.name || 'Campagne Directe',
+            matchScore: 92,
+            sentiment: c.sentiment,
+            lastMessage: c.last_message_text || '',
+            time: new Date(c.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+            messages: msgs
+          };
+        });
+
+        // Replace all conversations with real data (no mock merging)
+        setConversations(formatted);
+        if (formatted.length > 0 && formatted[0]) {
+          setSelectedConvId(formatted[0].id);
         }
       } catch (err) {
         console.error('Error fetching real inbox conversations:', err);
+        // Leave conversations empty — show empty state
+        setConversations([]);
+      } finally {
+        setLoadingConversations(false);
       }
     };
 
     fetchRealConversations();
-    
-    // Refresh every 10 seconds for real-time vibe
-    const interval = setInterval(fetchRealConversations, 10000);
+
+    // Refresh every 30 seconds
+    const interval = setInterval(fetchRealConversations, 30000);
     return () => clearInterval(interval);
   }, []);
 
-  const activeConv = (conversations.find(c => c.id === selectedConvId) || conversations[0]) as Conversation;
+  const activeConv = conversations.find(c => c.id === selectedConvId) || conversations[0];
 
   // Find if there is a pre-generated draft in the active conversation
   const lastMsgWithDraft = activeConv && activeConv.messages 
@@ -232,7 +153,7 @@ export default function InboxPage() {
   // Simulated sending of a reply
   const handleSendReply = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!replyText.trim()) return;
+    if (!replyText.trim() || !activeConv) return;
 
     captureAnalyticsEvent('inbox_reply_sent', {
       prospect: activeConv.prospectName,
@@ -263,6 +184,7 @@ export default function InboxPage() {
 
   // Magic Reply generator logic (Simulated AI)
   const generateMagicReply = (type: 'suggest_call' | 'handle_price' | 'send_case') => {
+    if (!activeConv) return;
     setIsAiGenerating(true);
     captureAnalyticsEvent('inbox_magic_reply_clicked', { type, prospect: activeConv.prospectName });
 
@@ -330,7 +252,27 @@ export default function InboxPage() {
         </div>
       </header>
 
+      {/* Empty state when no conversations yet */}
+      {!loadingConversations && conversations.length === 0 && (
+        <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-[#FAFAFA]">
+          <div className="h-14 w-14 rounded-2xl bg-zinc-100 flex items-center justify-center mb-4">
+            <MessageSquare className="h-7 w-7 text-zinc-400" />
+          </div>
+          <h3 className="text-base font-bold text-zinc-800 mb-2">Aucune conversation pour l'instant</h3>
+          <p className="text-sm text-zinc-400 max-w-xs leading-relaxed">
+            Connectez une boîte email et envoyez vos premiers messages pour voir les réponses de vos prospects ici.
+          </p>
+          <button
+            onClick={() => router.push('/app/settings/mailboxes')}
+            className="mt-4 px-4 py-2 rounded-lg bg-primary text-white text-xs font-bold hover:bg-primary/90 transition-colors"
+          >
+            Connecter une boîte email
+          </button>
+        </div>
+      )}
+
       {/* Main Inbox Workspace (3 Panes Split view) */}
+      {(loadingConversations || conversations.length > 0) && (
       <div className="flex-1 flex overflow-hidden bg-[#FAFAFA]">
         
         {/* Volet 1 : Conversations List (Left Pane) */}
@@ -639,6 +581,7 @@ export default function InboxPage() {
         </div>
 
       </div>
+      )}
 
     </div>
   );
