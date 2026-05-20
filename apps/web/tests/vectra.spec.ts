@@ -147,6 +147,74 @@ test.beforeEach(async ({ page, context }) => {
       ]),
     });
   });
+
+  // Mock inbox_conversations and inbox_messages
+  await page.route('**/rest/v1/inbox_conversations*', async (route) => {
+    const mockConversations = [
+      {
+        id: 'conv-interested-jenkins',
+        sentiment: 'interested',
+        last_message_text: 'Bonjour Kael, oui votre audit de saasinc.com m’intéresse carrément !',
+        updated_at: new Date().toISOString(),
+        lead: {
+          name: 'Sarah Jenkins',
+          company: 'SaaS Inc',
+          email: 'sarah@saasinc.com',
+          website: 'saasinc.com',
+          campaign: {
+            name: 'Audit SaaS Growth'
+          }
+        },
+        messages: [
+          {
+            id: 'msg-interested-jenkins',
+            conversation_id: 'conv-interested-jenkins',
+            nylas_message_id: 'msg-interested-jenkins',
+            sender_type: 'prospect',
+            body: 'Bonjour Kael, oui votre audit de saasinc.com m’intéresse carrément !',
+            snippet: 'Bonjour Kael, oui votre audit de saasinc.com m’intéresse carrément !',
+            subject: 'Re: Amélioration SaaS',
+            magic_reply_draft: 'Bonjour Sarah,\n\nMerci beaucoup pour votre intérêt ! Je suis ravi que notre audit vous intéresse.\n\nQue diriez-vous d\'un échange rapide jeudi à 15h00 pour en discuter de vive voix ?\nVoici mon lien direct : calendly.com/vectra/demo\n\nExcellente journée,\nL\'équipe Vectra',
+            created_at: new Date(Date.now() - 10000).toISOString()
+          }
+        ]
+      },
+      {
+        id: 'conv-objection-leclerc',
+        sentiment: 'objection',
+        last_message_text: 'Bonjour, c\'est un peu trop cher pour nous. Est-ce négociable ?',
+        updated_at: new Date(Date.now() - 20000).toISOString(),
+        lead: {
+          name: 'Marc-André Leclerc',
+          company: 'LeadFlow AI',
+          email: 'marc-andre@leadflow.ai',
+          website: 'leadflow.ai',
+          campaign: {
+            name: 'Outbound Pricing'
+          }
+        },
+        messages: [
+          {
+            id: 'msg-objection-leclerc',
+            conversation_id: 'conv-objection-leclerc',
+            nylas_message_id: 'msg-objection-leclerc',
+            sender_type: 'prospect',
+            body: 'Bonjour, c\'est un peu trop cher pour nous. Est-ce négociable ?',
+            snippet: 'Bonjour, c\'est un peu trop cher pour nous.',
+            subject: 'Re: Question de tarifs',
+            magic_reply_draft: 'Bonjour Marc-André,\n\nMerci pour votre retour ! C\'est une excellente question. Nos forfaits commencent à seulement 49€/mois pour la formule Solo Pro.\n\nSeriez-vous disponible ce jeudi à 11h pour un court appel de 5 minutes ?\n\nBien à vous,\nL\'équipe Vectra',
+            created_at: new Date(Date.now() - 20000).toISOString()
+          }
+        ]
+      }
+    ];
+
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify(mockConversations),
+    });
+  });
 });
 
 test.describe('Vectra E2E UI Tests', () => {
@@ -171,11 +239,12 @@ test.describe('Vectra E2E UI Tests', () => {
     await expect(page.locator('header').locator('text=Sourcing')).toBeVisible();
     
     // Check navigation preferences button
-    await expect(page.locator('button:has-text("Preferences")')).toBeVisible();
+    await expect(page.locator('button:has-text("Préférences")')).toBeVisible();
     
-    // Check timelines
-    await expect(page.locator('text=Job Description')).toBeVisible();
-    await expect(page.locator('text=Refine Search')).toBeVisible();
+    // Check the left history column header
+    await expect(page.locator('text=Search History')).toBeVisible();
+    // Check the empty state message in history column
+    await expect(page.locator('text=Aucune recherche récente')).toBeVisible();
     
     // Check chat input element using the stable DOM ID 'sourcing-chat-input'
     const chatInput = page.locator('input#sourcing-chat-input');
@@ -317,13 +386,11 @@ test.describe('Vectra E2E UI Tests', () => {
     await page.click('button:has-text("Enregistrer")');
     await expect(page.locator('text=Configuration enregistrée !')).toBeVisible();
 
-    // Run simulated cycle
-    await page.locator('button:has-text("Lancer un Cycle")').first().click();
-    await expect(page.locator('text=Running Sourcing & Analysis Orchestrator')).toBeVisible();
-    
-    // Allow typewriter simulation to progress
-    await page.waitForTimeout(800);
-    await expect(page.locator('text=Initializing Hermes-Agent')).toBeVisible();
+    // Run simulated cycle (button text changes to 'Lancer le Cycle' in the terminal header)
+    await page.locator('button:has-text("Lancer le Cycle")').first().click();
+    // Wait for the terminal to open and show the first log entry
+    await page.waitForTimeout(500);
+    await expect(page.locator('text=Démarrage du cycle Hermes')).toBeVisible();
 
     // 3. Check Analytics Page and Interactions
     await page.goto('/app/analytics');

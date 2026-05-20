@@ -71,7 +71,10 @@ export default function AgentsPage() {
       addLog(`[SYSTEM] Contexte : Campagne "${campaignName}" | Seuil: ${matchThreshold}% | Ton: ${defaultTone} | Langue: ${outreachLanguage.toUpperCase()}`, 'system');
 
       const { data: { session } } = await supabase.auth.getSession();
-      const authHeader = session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {};
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
 
       // Step 1: Run Hermes (sourcing)
       if (hermesActive) {
@@ -79,7 +82,7 @@ export default function AgentsPage() {
 
         const hermesRes = await fetch('/api/agents/hermes', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...authHeader },
+          headers,
           body: JSON.stringify({ campaign_id: selectedCampaignId })
         });
 
@@ -100,7 +103,7 @@ export default function AgentsPage() {
 
         const apolloRes = await fetch('/api/agents/apollo', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...authHeader },
+          headers,
           body: JSON.stringify({ campaign_id: selectedCampaignId })
         });
 

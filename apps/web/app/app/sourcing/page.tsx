@@ -191,7 +191,7 @@ export default function SourcingPage() {
 
       setMessages(prev => prev.map((m, mIdx) => {
         if (m.candidates) {
-          const newCandidates = m.candidates.map((c, cIdx) => {
+          const newCandidates = m.candidates.map((c: Candidate, cIdx: number) => {
             const isSelected = selectedCandidates.includes(`${mIdx}-${cIdx}`);
             if (isSelected) {
               return { ...c, saved: true };
@@ -601,7 +601,7 @@ export default function SourcingPage() {
                     {/* Candidate Suggestion Cards (Copilot response) */}
                     {msg.sender === 'copilot' && msg.candidates && msg.candidates.length > 0 && (
                       <div className="mt-4 grid gap-3">
-                        {msg.candidates.map((c, cIdx) => (
+                        {msg.candidates.map((c: Candidate, cIdx: number) => (
                           <div key={cIdx} className="p-4 rounded-xl border border-zinc-100 bg-zinc-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-zinc-200 transition-all">
                             
                             {/* Checkbox & Candidate Info */}

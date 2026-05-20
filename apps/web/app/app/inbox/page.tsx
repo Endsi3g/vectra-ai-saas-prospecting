@@ -350,234 +350,246 @@ export default function InboxPage() {
 
         {/* Volet 2 : Chat history thread (Middle Pane) */}
         <div className="flex-1 flex flex-col bg-zinc-50 h-full border-r border-zinc-200">
-          
-          {/* Scrollable chat thread area */}
-          <div className="flex-1 overflow-y-auto p-6 space-y-6">
-            
-            {activeConv.messages.map((msg, idx) => {
-              const isUser = msg.sender === 'user';
-              return (
-                <div key={idx} className={`flex gap-3 max-w-3xl ${isUser ? 'justify-end ml-auto' : 'mr-auto'}`}>
-                  
-                  {/* Avatar */}
-                  {!isUser && (
-                    <div className="h-8 w-8 rounded-full bg-zinc-200 border border-zinc-300 text-zinc-600 flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-sm mt-0.5">
-                      {activeConv.prospectName.slice(0, 2).toUpperCase()}
-                    </div>
-                  )}
-
-                  <div className={`flex flex-col gap-1.5 ${isUser ? 'items-end' : 'items-start'}`}>
-                    {/* Timestamp / Sender identifier info */}
-                    <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider select-none">
-                      {isUser ? 'Vous (Outbound Email)' : `${activeConv.prospectName} (${activeConv.company})`} &middot; {msg.timestamp}
-                    </span>
-
-                    {/* Chat bubble body card */}
-                    <div className={`rounded-xl border p-4 shadow-sm text-xs leading-relaxed max-w-[500px] whitespace-pre-wrap ${
-                      isUser 
-                        ? 'bg-zinc-900 border-zinc-900 text-white rounded-tr-none' 
-                        : 'bg-white border-zinc-200 text-zinc-800 rounded-tl-none'
-                    }`}>
-                      {msg.text}
-                    </div>
-                  </div>
-
-                  {isUser && (
-                    <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center font-bold text-xs shrink-0 select-none mt-0.5">
-                      KB
-                    </div>
-                  )}
-
-                </div>
-              );
-            })}
-
-          </div>
-
-          {/* Fixed bottom chat reply input workspace */}
-          <div className="p-4 bg-white border-t border-zinc-200 space-y-3 shrink-0">
-            {preGeneratedDraft && replyText !== preGeneratedDraft && (
-              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-800">
-                    <Sparkles className="h-3.5 w-3.5 text-emerald-500 animate-pulse" />
-                    <span>Brouillon Magic Reply pré-généré par l'IA</span>
-                  </div>
-                  <p className="text-[10px] text-zinc-500 italic line-clamp-1">
-                    "{preGeneratedDraft}"
-                  </p>
-                </div>
-                <Button
-                  type="button"
-                  onClick={() => {
-                    setReplyText(preGeneratedDraft);
-                    triggerToast('Brouillon de réponse IA appliqué dans la zone de texte !');
-                  }}
-                  className="h-7 px-3 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold rounded-lg shrink-0 flex items-center gap-1 shadow-sm border-none"
-                >
-                  <span>Appliquer</span>
-                  <Check className="h-3 w-3" />
-                </Button>
-              </div>
-            )}
-
-            <form onSubmit={handleSendReply} className="space-y-3">
-              <div className="relative">
-                <Textarea
-                  placeholder={`Répondre à ${activeConv.prospectName}...`}
-                  value={replyText}
-                  onChange={(e) => setReplyText(e.target.value)}
-                  rows={4}
-                  className="w-full text-xs border-zinc-200 focus-visible:ring-primary resize-none placeholder-zinc-400 bg-zinc-50 pr-12 pt-3 pb-3 rounded-xl leading-relaxed"
-                />
+          {activeConv ? (
+            <>
+              {/* Scrollable chat thread area */}
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 
-                {/* Send Button overlay inside input */}
-                <div className="absolute bottom-2.5 right-3 flex items-center gap-2">
-                  <span className="text-[10px] text-zinc-400 hidden sm:flex items-center gap-1 select-none">
-                    <span>Ctrl</span>
-                    <span>+</span>
-                    <CornerDownLeft className="h-3 w-3" />
-                  </span>
-                  <Button
-                    type="submit"
-                    size="sm"
-                    disabled={!replyText.trim()}
-                    className="h-8 px-3 rounded-lg bg-primary hover:bg-primary/95 text-white font-bold text-xs"
-                  >
-                    <Send className="h-3 w-3 mr-1" />
-                    Envoyer
-                  </Button>
-                </div>
-              </div>
-            </form>
-          </div>
+                {activeConv.messages.map((msg, idx) => {
+                  const isUser = msg.sender === 'user';
+                  return (
+                    <div key={idx} className={`flex gap-3 max-w-3xl ${isUser ? 'justify-end ml-auto' : 'mr-auto'}`}>
+                      
+                      {/* Avatar */}
+                      {!isUser && (
+                        <div className="h-8 w-8 rounded-full bg-zinc-200 border border-zinc-300 text-zinc-600 flex items-center justify-center font-bold text-xs shrink-0 select-none shadow-sm mt-0.5">
+                          {activeConv.prospectName.slice(0, 2).toUpperCase()}
+                        </div>
+                      )}
 
+                      <div className={`flex flex-col gap-1.5 ${isUser ? 'items-end' : 'items-start'}`}>
+                        {/* Timestamp / Sender identifier info */}
+                        <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-wider select-none">
+                          {isUser ? 'Vous (Outbound Email)' : `${activeConv.prospectName} (${activeConv.company})`} &middot; {msg.timestamp}
+                        </span>
+
+                        {/* Chat bubble body card */}
+                        <div className={`rounded-xl border p-4 shadow-sm text-xs leading-relaxed max-w-[500px] whitespace-pre-wrap ${
+                          isUser 
+                            ? 'bg-zinc-900 border-zinc-900 text-white rounded-tr-none' 
+                            : 'bg-white border-zinc-200 text-zinc-800 rounded-tl-none'
+                        }`}>
+                          {msg.text}
+                        </div>
+                      </div>
+
+                      {isUser && (
+                        <div className="h-8 w-8 rounded-full bg-primary/10 border border-primary/20 text-primary flex items-center justify-center font-bold text-xs shrink-0 select-none mt-0.5">
+                          KB
+                        </div>
+                      )}
+
+                    </div>
+                  );
+                })}
+
+              </div>
+
+              {/* Fixed bottom chat reply input workspace */}
+              <div className="p-4 bg-white border-t border-zinc-200 space-y-3 shrink-0">
+                {preGeneratedDraft && replyText !== preGeneratedDraft && (
+                  <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-800">
+                        <Sparkles className="h-3.5 w-3.5 text-emerald-500 animate-pulse" />
+                        <span>Brouillon Magic Reply pré-généré par l'IA</span>
+                      </div>
+                      <p className="text-[10px] text-zinc-500 italic line-clamp-1">
+                        "{preGeneratedDraft}"
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      onClick={() => {
+                        setReplyText(preGeneratedDraft);
+                        triggerToast('Brouillon de réponse IA appliqué dans la zone de texte !');
+                      }}
+                      className="h-7 px-3 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold rounded-lg shrink-0 flex items-center gap-1 shadow-sm border-none"
+                    >
+                      <span>Appliquer</span>
+                      <Check className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+
+                <form onSubmit={handleSendReply} className="space-y-3">
+                  <div className="relative">
+                    <Textarea
+                      placeholder={`Répondre à ${activeConv.prospectName}...`}
+                      value={replyText}
+                      onChange={(e) => setReplyText(e.target.value)}
+                      rows={4}
+                      className="w-full text-xs border-zinc-200 focus-visible:ring-primary resize-none placeholder-zinc-400 bg-zinc-50 pr-12 pt-3 pb-3 rounded-xl leading-relaxed"
+                    />
+                    
+                    {/* Send Button overlay inside input */}
+                    <div className="absolute bottom-2.5 right-3 flex items-center gap-2">
+                      <span className="text-[10px] text-zinc-400 hidden sm:flex items-center gap-1 select-none">
+                        <span>Ctrl</span>
+                        <span>+</span>
+                        <CornerDownLeft className="h-3 w-3" />
+                      </span>
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={!replyText.trim()}
+                        className="h-8 px-3 rounded-lg bg-primary hover:bg-primary/95 text-white font-bold text-xs"
+                      >
+                        <Send className="h-3 w-3 mr-1" />
+                        Envoyer
+                      </Button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+            </>
+          ) : (
+            <div className="flex-1 flex items-center justify-center text-zinc-400 text-xs italic bg-zinc-50 select-none">
+              Sélectionnez une conversation pour voir le fil de messages
+            </div>
+          )}
         </div>
 
         {/* Volet 3 : Prospect info & Magic Replies (Right Pane) */}
         <div className="w-80 bg-white flex flex-col shrink-0 p-6 space-y-6 h-full overflow-y-auto">
-          
-          {/* Section A: Profile summary */}
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Prospect Profile</h4>
-              <Badge className="bg-primary/15 text-primary hover:bg-primary/15 border-none font-bold text-[10px]">
-                Score: {activeConv.matchScore}%
-              </Badge>
-            </div>
+          {activeConv ? (
+            <>
+              {/* Section A: Profile summary */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Prospect Profile</h4>
+                  <Badge className="bg-primary/15 text-primary hover:bg-primary/15 border-none font-bold text-[10px]">
+                    Score: {activeConv.matchScore}%
+                  </Badge>
+                </div>
 
-            <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-3">
-              <div>
-                <span className="text-[10px] font-bold text-zinc-400 uppercase block select-none">Nom complet</span>
-                <span className="text-xs font-bold text-zinc-900 block mt-0.5">{activeConv.prospectName}</span>
+                <div className="bg-zinc-50 border border-zinc-200 rounded-xl p-4 space-y-3">
+                  <div>
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase block select-none">Nom complet</span>
+                    <span className="text-xs font-bold text-zinc-900 block mt-0.5">{activeConv.prospectName}</span>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase block select-none">Entreprise &amp; Site Web</span>
+                    <div className="flex items-center justify-between mt-0.5">
+                      <span className="text-xs font-semibold text-zinc-800">{activeConv.company}</span>
+                      <a 
+                        href={`https://${activeConv.website}`} 
+                        target="_blank" 
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center text-[10px] text-primary hover:underline font-bold gap-0.5"
+                      >
+                        {activeConv.website}
+                        <ExternalLink className="h-2.5 w-2.5" />
+                      </a>
+                    </div>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase block select-none">Adresse e-mail</span>
+                    <span className="text-xs text-zinc-600 block mt-0.5">{activeConv.email}</span>
+                  </div>
+
+                  <div>
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase block select-none">Campagne d'origine</span>
+                    <span className="text-[10px] bg-zinc-200/50 text-zinc-700 px-2 py-0.5 rounded-full inline-block font-semibold mt-1">
+                      {activeConv.campaign}
+                    </span>
+                  </div>
+                </div>
               </div>
 
-              <div>
-                <span className="text-[10px] font-bold text-zinc-400 uppercase block select-none">Entreprise &amp; Site Web</span>
-                <div className="flex items-center justify-between mt-0.5">
-                  <span className="text-xs font-semibold text-zinc-800">{activeConv.company}</span>
-                  <a 
-                    href={`https://${activeConv.website}`} 
-                    target="_blank" 
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center text-[10px] text-primary hover:underline font-bold gap-0.5"
+              {/* Section B: Magic Replies */}
+              <div className="space-y-4 pt-2">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
+                    <Sparkles className="h-3.5 w-3.5 text-primary animate-pulse" />
+                    <span>Magic Replies (IA)</span>
+                  </h4>
+                </div>
+                
+                <p className="text-[11px] text-zinc-500 leading-normal">
+                  Générez une réponse optimisée par l'IA basée sur le message reçu du prospect.
+                </p>
+
+                <div className="grid grid-cols-1 gap-2">
+                  
+                  <button
+                    onClick={() => generateMagicReply('suggest_call')}
+                    disabled={isAiGenerating || activeConv.sentiment === 'unsubscribe'}
+                    className="w-full flex items-center justify-between p-3 rounded-xl border border-zinc-200 hover:border-primary hover:bg-emerald-50/20 text-left transition-all text-xs group disabled:opacity-50 disabled:pointer-events-none"
                   >
-                    {activeConv.website}
-                    <ExternalLink className="h-2.5 w-2.5" />
-                  </a>
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-lg bg-emerald-50 text-primary flex items-center justify-center shrink-0">
+                        <Calendar className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <span className="font-bold text-zinc-800 block group-hover:text-primary transition-colors">📅 Proposer un appel</span>
+                        <span className="text-[10px] text-zinc-400 block mt-0.5">Calendly link insertion</span>
+                      </div>
+                    </div>
+                    <ArrowRight className="h-3.5 w-3.5 text-zinc-300 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
+                  </button>
+
+                  <button
+                    onClick={() => generateMagicReply('handle_price')}
+                    disabled={isAiGenerating || activeConv.sentiment === 'unsubscribe'}
+                    className="w-full flex items-center justify-between p-3 rounded-xl border border-zinc-200 hover:border-primary hover:bg-emerald-50/20 text-left transition-all text-xs group disabled:opacity-50 disabled:pointer-events-none"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-lg bg-emerald-50 text-primary flex items-center justify-center shrink-0">
+                        <DollarSign className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <span className="font-bold text-zinc-800 block group-hover:text-primary transition-colors">💰 Justifier le Tarif</span>
+                        <span className="text-[10px] text-zinc-400 block mt-0.5">Expliquer nos prix &amp; ROI</span>
+                      </div>
+                    </div>
+                    <ArrowRight className="h-3.5 w-3.5 text-zinc-300 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
+                  </button>
+
+                  <button
+                    onClick={() => generateMagicReply('send_case')}
+                    disabled={isAiGenerating || activeConv.sentiment === 'unsubscribe'}
+                    className="w-full flex items-center justify-between p-3 rounded-xl border border-zinc-200 hover:border-primary hover:bg-emerald-50/20 text-left transition-all text-xs group disabled:opacity-50 disabled:pointer-events-none"
+                  >
+                    <div className="flex items-center gap-2">
+                      <div className="h-7 w-7 rounded-lg bg-emerald-50 text-primary flex items-center justify-center shrink-0">
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <span className="font-bold text-zinc-800 block group-hover:text-primary transition-colors">📁 Envoyer un Use Case</span>
+                        <span className="text-[10px] text-zinc-400 block mt-0.5">Partager un succès client</span>
+                      </div>
+                    </div>
+                    <ArrowRight className="h-3.5 w-3.5 text-zinc-300 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
+                  </button>
+
                 </div>
-              </div>
 
-              <div>
-                <span className="text-[10px] font-bold text-zinc-400 uppercase block select-none">Adresse e-mail</span>
-                <span className="text-xs text-zinc-600 block mt-0.5">{activeConv.email}</span>
+                {isAiGenerating && (
+                  <div className="flex items-center gap-2 text-[10px] text-zinc-400 mt-2 font-medium">
+                    <Clock className="h-3.5 w-3.5 animate-spin text-primary" />
+                    <span>Génération du brouillon IA en cours...</span>
+                  </div>
+                )}
               </div>
-
-              <div>
-                <span className="text-[10px] font-bold text-zinc-400 uppercase block select-none">Campagne d'origine</span>
-                <span className="text-[10px] bg-zinc-200/50 text-zinc-700 px-2 py-0.5 rounded-full inline-block font-semibold mt-1">
-                  {activeConv.campaign}
-                </span>
-              </div>
+            </>
+          ) : (
+            <div className="flex-grow flex items-center justify-center text-zinc-400 text-xs italic bg-white select-none">
+              Sélectionnez une conversation
             </div>
-          </div>
-
-          {/* Section B: Magic Replies */}
-          <div className="space-y-4 pt-2">
-            <div className="flex items-center justify-between">
-              <h4 className="text-xs font-bold text-zinc-400 uppercase tracking-wider flex items-center gap-1">
-                <Sparkles className="h-3.5 w-3.5 text-primary animate-pulse" />
-                <span>Magic Replies (IA)</span>
-              </h4>
-            </div>
-            
-            <p className="text-[11px] text-zinc-500 leading-normal">
-              Générez une réponse optimisée par l'IA basée sur le message reçu du prospect.
-            </p>
-
-            <div className="grid grid-cols-1 gap-2">
-              
-              <button
-                onClick={() => generateMagicReply('suggest_call')}
-                disabled={isAiGenerating || activeConv.sentiment === 'unsubscribe'}
-                className="w-full flex items-center justify-between p-3 rounded-xl border border-zinc-200 hover:border-primary hover:bg-emerald-50/20 text-left transition-all text-xs group disabled:opacity-50 disabled:pointer-events-none"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-lg bg-emerald-50 text-primary flex items-center justify-center shrink-0">
-                    <Calendar className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <span className="font-bold text-zinc-800 block group-hover:text-primary transition-colors">📅 Proposer un appel</span>
-                    <span className="text-[10px] text-zinc-400 block mt-0.5">Calendly link insertion</span>
-                  </div>
-                </div>
-                <ArrowRight className="h-3.5 w-3.5 text-zinc-300 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
-              </button>
-
-              <button
-                onClick={() => generateMagicReply('handle_price')}
-                disabled={isAiGenerating || activeConv.sentiment === 'unsubscribe'}
-                className="w-full flex items-center justify-between p-3 rounded-xl border border-zinc-200 hover:border-primary hover:bg-emerald-50/20 text-left transition-all text-xs group disabled:opacity-50 disabled:pointer-events-none"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-lg bg-emerald-50 text-primary flex items-center justify-center shrink-0">
-                    <DollarSign className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <span className="font-bold text-zinc-800 block group-hover:text-primary transition-colors">💰 Justifier le Tarif</span>
-                    <span className="text-[10px] text-zinc-400 block mt-0.5">Expliquer nos prix &amp; ROI</span>
-                  </div>
-                </div>
-                <ArrowRight className="h-3.5 w-3.5 text-zinc-300 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
-              </button>
-
-              <button
-                onClick={() => generateMagicReply('send_case')}
-                disabled={isAiGenerating || activeConv.sentiment === 'unsubscribe'}
-                className="w-full flex items-center justify-between p-3 rounded-xl border border-zinc-200 hover:border-primary hover:bg-emerald-50/20 text-left transition-all text-xs group disabled:opacity-50 disabled:pointer-events-none"
-              >
-                <div className="flex items-center gap-2">
-                  <div className="h-7 w-7 rounded-lg bg-emerald-50 text-primary flex items-center justify-center shrink-0">
-                    <FileText className="h-4 w-4" />
-                  </div>
-                  <div>
-                    <span className="font-bold text-zinc-800 block group-hover:text-primary transition-colors">📁 Envoyer un Use Case</span>
-                    <span className="text-[10px] text-zinc-400 block mt-0.5">Partager un succès client</span>
-                  </div>
-                </div>
-                <ArrowRight className="h-3.5 w-3.5 text-zinc-300 group-hover:text-primary transition-all group-hover:translate-x-0.5" />
-              </button>
-
-            </div>
-
-            {isAiGenerating && (
-              <div className="flex items-center gap-2 text-[10px] text-zinc-400 mt-2 font-medium">
-                <Clock className="h-3.5 w-3.5 animate-spin text-primary" />
-                <span>Génération du brouillon IA en cours...</span>
-              </div>
-            )}
-          </div>
-
+          )}
         </div>
 
       </div>

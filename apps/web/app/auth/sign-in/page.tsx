@@ -15,6 +15,7 @@ export default function SignInPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [magicLinkMode, setMagicLinkMode] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handlePasswordSignIn = async (e: React.FormEvent) => {
@@ -51,6 +52,28 @@ export default function SignInPage() {
     }
   };
 
+  const handleMagicLink = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email) {
+      setMessage({ type: 'error', text: 'Veuillez entrer votre adresse courriel.' });
+      return;
+    }
+    setLoading(true);
+    setMessage(null);
+    try {
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: { emailRedirectTo: `${window.location.origin}/auth/callback` },
+      });
+      if (error) throw error;
+      setMessage({ type: 'success', text: '✉️ Lien de connexion envoyé ! Vérifiez votre boîte de réception.' });
+    } catch (err: any) {
+      setMessage({ type: 'error', text: err.message || "Erreur lors de l'envoi du lien magique." });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleGoogleSignIn = async () => {
     setLoading(true);
     setMessage(null);
@@ -73,7 +96,7 @@ export default function SignInPage() {
       footerLinkText="Créer un compte"
       footerLinkHref="/auth/sign-up"
     >
-      <form onSubmit={handlePasswordSignIn} className="space-y-4">
+      <form onSubmit={magicLinkMode ? handleMagicLink : handlePasswordSignIn} className="space-y-4">
         <div className="space-y-1.5">
           <Label htmlFor="signin-email" className="text-xs font-semibold text-zinc-600">
             Courriel professionnel
@@ -90,26 +113,28 @@ export default function SignInPage() {
           />
         </div>
 
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <Label htmlFor="signin-password" className="text-xs font-semibold text-zinc-600">
-              Mot de passe
-            </Label>
-            <Link href="/auth/reset-password" className="text-xs text-zinc-400 hover:text-primary transition-colors">
-              Mot de passe oublié ?
-            </Link>
+        {!magicLinkMode && (
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="signin-password" className="text-xs font-semibold text-zinc-600">
+                Mot de passe
+              </Label>
+              <Link href="/auth/reset-password" className="text-xs text-zinc-400 hover:text-primary transition-colors">
+                Mot de passe oublié ?
+              </Link>
+            </div>
+            <Input
+              id="signin-password"
+              type="password"
+              placeholder="Entrez votre mot de passe"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              autoComplete="current-password"
+              className="h-11"
+            />
           </div>
-          <Input
-            id="signin-password"
-            type="password"
-            placeholder="Entrez votre mot de passe"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            autoComplete="current-password"
-            className="h-11"
-          />
-        </div>
+        )}
 
         {message && (
           <div className={`rounded-lg px-4 py-3 text-xs font-medium ${
@@ -122,8 +147,18 @@ export default function SignInPage() {
         )}
 
         <Button type="submit" className="w-full h-11 font-bold" disabled={loading}>
-          {loading ? 'Connexion en cours...' : 'Se connecter'}
+          {loading
+            ? (magicLinkMode ? 'Envoi en cours...' : 'Connexion en cours...')
+            : (magicLinkMode ? '✉️ Envoyer le lien magique' : 'Se connecter')}
         </Button>
+
+        <button
+          type="button"
+          onClick={() => { setMagicLinkMode(m => !m); setMessage(null); }}
+          className="w-full text-center text-xs text-zinc-400 hover:text-primary transition-colors py-1"
+        >
+          {magicLinkMode ? '← Revenir au mot de passe' : '✨ Se connecter sans mot de passe (Magic Link)'}
+        </button>
       </form>
 
       <div className="relative my-1">

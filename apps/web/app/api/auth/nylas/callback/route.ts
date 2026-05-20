@@ -11,7 +11,8 @@ export async function GET(request: Request) {
   }
 
   const clientId = process.env.NYLAS_CLIENT_ID;
-  const clientSecret = process.env.NYLAS_CLIENT_SECRET;
+  const clientSecret = process.env.NYLAS_CLIENT_SECRET || process.env.NYLAS_API_KEY;
+  const redirectUri = process.env.NYLAS_REDIRECT_URI || 'http://localhost:3000/api/auth/nylas/callback';
   
   let grantId = `mock-grant-${Math.random().toString(36).substring(7)}`;
   let email = '';
@@ -31,15 +32,16 @@ export async function GET(request: Request) {
 
     // 2. Real OAuth exchange if credentials exist
     if (clientId && clientSecret) {
-      console.log('[Nylas Callback] Exchanging code for token...');
-      const tokenResponse = await fetch('https://api.nylas.com/oauth/token', {
+      console.log('[Nylas Callback] Exchanging code for token using Nylas V3...');
+      const tokenResponse = await fetch('https://api.us.nylas.com/v3/connect/token', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           client_id: clientId,
           client_secret: clientSecret,
           grant_type: 'authorization_code',
-          code: code
+          code: code,
+          redirect_uri: redirectUri
         })
       });
 
@@ -50,8 +52,8 @@ export async function GET(request: Request) {
       }
 
       const tokenData = await tokenResponse.json();
-      grantId = tokenData.access_token || tokenData.grant_id; // Nylas v2 vs v3
-      email = tokenData.email_address || email;
+      grantId = tokenData.grant_id || tokenData.access_token;
+      email = tokenData.email || tokenData.email_address || email;
     } else {
       console.log(`[Nylas Callback] Dev environment: persisting mock mailbox credentials for email: ${email}`);
     }

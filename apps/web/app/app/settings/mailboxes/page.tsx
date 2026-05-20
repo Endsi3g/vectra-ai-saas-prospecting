@@ -90,50 +90,7 @@ export default function MailboxesPage() {
   // Simulate Nylas OAuth redirect checkout
   const handleConnectOAuth = async (provider: 'gmail' | 'outlook') => {
     setConnectingProvider(provider);
-    
-    // In production, we call "/api/auth/nylas/checkout?provider=..."
-    // For local interactive experience, we do a premium mock callback setup
-    setTimeout(async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          showToast('Veuillez vous connecter d’abord.', 'error');
-          return;
-        }
-
-        const email = provider === 'gmail' 
-          ? `${user.email?.split('@')[0]}@gmail.com` 
-          : `${user.email?.split('@')[0]}@outlook.com`;
-
-        const newMailbox = {
-          user_id: user.id,
-          email: email.toLowerCase(),
-          provider,
-          nylas_grant_id: `mock-grant-${Math.random().toString(36).substring(7)}`,
-          status: 'connected'
-        };
-
-        const { error } = await supabase
-          .from('mailboxes')
-          .insert(newMailbox);
-
-        if (error) {
-          if (error.code === '23505') {
-            showToast(`Cette adresse e-mail (${email}) est déjà connectée.`, 'error');
-          } else {
-            throw error;
-          }
-        } else {
-          showToast(`Compte ${provider === 'gmail' ? 'Google' : 'Outlook'} synchronisé avec succès via Nylas !`);
-          fetchMailboxes();
-        }
-      } catch (err) {
-        console.error('Error connecting provider:', err);
-        showToast('Erreur lors de la connexion de la messagerie', 'error');
-      } finally {
-        setConnectingProvider(null);
-      }
-    }, 1500);
+    window.location.href = `/api/auth/nylas/checkout?provider=${provider}`;
   };
 
   // Custom IMAP submission

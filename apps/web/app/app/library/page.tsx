@@ -47,7 +47,7 @@ const LinkedinIcon = (props: React.SVGProps<SVGSVGElement>) => (
   </svg>
 );
 
-export default function LibraryPage() {
+function LibraryPageContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const collectionFilterId = searchParams ? searchParams.get('collection') : null;
@@ -594,5 +594,17 @@ export default function LibraryPage() {
       </div>
 
     </div>
+  );
+}
+
+export default function LibraryPage() {
+  return (
+    <React.Suspense fallback={
+      <div className="flex-1 flex items-center justify-center bg-white text-zinc-500 font-sans text-xs">
+        Loading library...
+      </div>
+    }>
+      <LibraryPageContent />
+    </React.Suspense>
   );
 }

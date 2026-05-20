@@ -1,12 +1,14 @@
-# Vectra Developer Handoff Guide 📋
+# Vectra OS — Developer Handoff Guide 📋
 
-This document outlines technical specifications, database schemas, mock seeding, SaaS core infrastructure, and E2E testing strategies to facilitate seamless development continuity.
+This document outlines technical specifications, database schemas, third-party integrations, and E2E testing strategies to facilitate seamless development continuity.
+
+**Last Updated:** 2026-05-20 | **Build Status:** ✅ Passing
 
 ---
 
 ## 1. Database Schema (Supabase SQL)
 
-The PostgreSQL tables are configured to handle user profiling, multi-campaign management, scrapers, and personalized messages. Find the full SQL schema file in [supabase_schema.sql](file:///c:/Vectra -AI SaaS Prospecting/vectra/supabase_schema.sql).
+The PostgreSQL tables handle user profiling, multi-campaign management, scrapers, mailboxes, and personalized messages. Full schema in [`supabase_schema.sql`](./supabase_schema.sql).
 
 ### Core Tables Summary
 
@@ -67,135 +69,159 @@ create table public.messages (
   email_subject text,
   email_body text,
   linkedin_message text,
-  personalization_score integer, -- matching percentage (e.g. 95)
-  summary text, -- AI context/research summary
-  status text default 'draft', -- 'draft', 'approved', 'discarded'
+  personalization_score integer,
+  summary text,
+  status text default 'draft',
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
+);
+```
+
+#### `mailboxes`
+Stores connected email accounts via Nylas V3:
+```sql
+create table public.mailboxes (
+  id uuid default gen_random_uuid() primary key,
+  user_id uuid references auth.users not null,
+  email text not null,
+  provider text not null, -- 'gmail', 'outlook'
+  nylas_grant_id text not null,
+  status text default 'connected',
+  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
+  unique(user_id, email)
 );
 ```
 
 ---
 
-## 2. Essential SaaS Infrastructure & "Boring Briques" 🧱
+## 2. Third-Party Integrations
 
-Vectra includes and outlines core boilerplate configurations necessary for running a complete production-grade SaaS product:
+### Nylas V3 (Email OAuth) ✅
+
+**Status:** Fully implemented and tested.
+
+**Flow:**
+1. User clicks "Connect Gmail/Outlook" in `/app/settings/mailboxes`
+2. Redirected to `https://api.us.nylas.com/v3/connect/auth` with `client_id`, `redirect_uri`, and `response_type=code`
+3. After consent, Nylas redirects to `/api/auth/nylas/callback?code=XXX`
+4. Callback exchanges code for token via `POST https://api.us.nylas.com/v3/connect/token`
+5. `grant_id` is persisted to Supabase `mailboxes` table
+
+**Key env vars required:**
+```env
+NYLAS_CLIENT_ID=d12165a7-6c3b-4efc-a754-e9fdb60833fe
+NYLAS_CLIENT_SECRET=nyk_v0_hXlOGTOUj2hlnJ6fIFQ8we00aBqjM2R3fNvZLYJeLHzhg7jKtYE7Hzx31JEdXJDg
+NYLAS_REDIRECT_URI=http://localhost:3000/api/auth/nylas/callback
+```
+
+**Callback route:** `apps/web/app/api/auth/nylas/callback/route.ts`
+- Handles both real OAuth (when `NYLAS_CLIENT_ID` + `NYLAS_CLIENT_SECRET` set) and dev mock fallback
+- Upserts mailbox with `grant_id` and `status: 'connected'`
+- Returns duplicate-safe error (`error=already_connected`) on `23505` Postgres constraint
+
+**Known Grant ID (production test):**
+- Grant ID: `63917b1a-d25e-44f5-a637-e48b276d5412`
+
+---
+
+### OpenRouter AI (LLM Routing) ✅
+
+**Status:** Active. Best available free model routed automatically.
+
+**Key env vars:**
+```env
+OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+**Usage:** Powers all AI generation endpoints (`/api/generate`, magic replies, sourcing copilot) via `https://openrouter.ai/api/v1/chat/completions`. Model selection targets best free available (currently `google/gemini-2.0-flash-exp:free` or equivalent).
+
+---
+
+## 3. Essential SaaS Infrastructure 🧱
 
 ### a) Deployment & Hosting
-- **Frontend / Next.js Server**: Hosted on **Vercel** with integrated continuous deployment (CI/CD) hooked to the main GitHub branch.
-- **Database & Security**: Postgres DB managed in **Supabase**. Row Level Security (RLS) policies are active on `campaigns`, `leads`, and `messages` tables to ensure users can only query and mutate their own data records:
-  ```sql
-  alter table public.campaigns enable row level security;
-  create policy "Users can only access their own campaigns" on public.campaigns
-    for all using (auth.uid() = user_id);
-  ```
+- **Frontend**: Next.js 16 on **Vercel** with Turbopack, CI/CD via GitHub main branch
+- **Database**: Supabase Postgres with RLS policies active on all user-scoped tables
 
-### b) User Authentication & Route Middleware
-- Powered by **Supabase Auth** (Email + password with optional magic links support).
-- **Protected Routes**: Next.js route middleware (`lib/middleware.ts`) protects all routes under `/app` and `/api/generate` by redirecting unauthenticated requests back to `/auth/sign-in`.
+### b) Authentication & Route Middleware
+- **Supabase Auth** (email + password, magic links)
+- Protected routes under `/app/*` and `/api/*` via Next.js middleware
 
-### c) Transactional Email Delivery (Resend)
-- **Resend** is configured as the transaction email engine (welcome notifications, password resets).
-- **Setup**: `resend` package installed. Core email utility is structured inside `lib/email.ts`:
-  ```typescript
-  import { Resend } from 'resend';
-  const resend = new Resend(process.env.RESEND_API_KEY);
-  
-  export async function sendWelcomeEmail(to: string, name: string) {
-    await resend.emails.send({
-      from: 'Vectra <welcome@vectra.ai>',
-      to,
-      subject: 'Bienvenue sur Vectra !',
-      html: `<p>Bonjour ${name}, votre espace de sourcing IA est prêt.</p>`
-    });
-  }
-  ```
+### c) Transactional Email (Resend)
+- `RESEND_API_KEY` env var required
+- Welcome + password reset emails via `lib/email.ts`
 
-### d) Logs, Exception Monitoring & Uptime
-- **Sentry Integration**: Exception tracking is configured on both the client (React pages) and server-side routes (`/api/generate`) via Sentry Next.js configuration bindings (`sentry.client.config.ts` and `sentry.server.config.ts`).
-- **Health Checks & Uptime**: A dedicated health check endpoint `/api/health` returns status code `200 OK` when database latency is nominal. Checked at 1-minute intervals via **UptimeRobot** or **Better Stack** to ensure platform availability.
+### d) Monitoring & Uptime
+- **Sentry** for client + server exception tracking
+- `/api/health` endpoint for uptime monitoring (UptimeRobot / Better Stack)
 
 ### e) Product Analytics (PostHog)
-- Client-side event tracking tracks customer feature engagement metrics:
-  - `campaign_created` (triggered on campaigns panel additions).
-  - `leads_imported` (triggered on CSV library dropzone parsing).
-  - `messages_generated` (triggered upon outreach personalizations).
+- Events tracked: `campaign_created`, `leads_imported`, `messages_generated`, `inbox_reply_sent`, `agents_config_saved`, `training_simulation_started`, `training_simulation_ended`
 
-### f) Billing & Subscriptions (Stripe Integration Completed 💳)
-- **Database Schema**: Tracks subscriptions using fields on the user profile (`plan`, `credits_count`, `credits_limit`, `stripe_customer_id`, `stripe_subscription_id`).
-- **Billing Checkout**: `/api/billing/checkout` handles checkout session creation using Stripe SDK.
-- **Customer Portal**: `/api/billing/portal` generates portal sessions for users to manage cards, view invoices, or cancel plans.
-- **Webhook Sync**: `/api/webhooks/stripe` processes payment status notifications from Stripe (`checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`), dynamically adjusting customer database records and allocating appropriate credit ceilings.
+### f) Billing (Stripe)
+- Checkout: `/api/billing/checkout`
+- Portal: `/api/billing/portal`
+- Webhooks: `/api/webhooks/stripe` handles `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
 
 ---
 
-## 3. Playwright E2E Mock Seeding Strategy
+## 4. UI/UX System (Latest Redesign) 🎨
 
-To keep End-to-End tests fast and isolated from network failures (`net::ERR_NAME_NOT_RESOLVED`), all tests in [vectra.spec.ts](file:///c:/Vectra -AI SaaS Prospecting/vectra/apps/web/tests/vectra.spec.ts) use structured mocks:
+### Announcement Bar
+- **Color**: Orange (`border-orange-100`, `text-orange-600`, `text-orange-500`)
+- **Pattern**: `.bg-pattern` class with `bg-white/60` overlay
+- **Content**: Trial-expired messaging with "Explore plans" CTA link
+- **Position**: Full-width top bar, `z-20`, `shrink-0`, rendered in **both** settings and main app layouts
 
-1. **Session Seeding**: Injecting a mock Supabase session via `page.addInitScript()`:
-   ```javascript
-   window.localStorage.setItem('sb-placeholder-auth-token', JSON.stringify({
-     access_token: 'mock-access-token',
-     user: { id: 'mock-user-id', email: 'kael@example.com' }
-   }));
-   ```
-
-2. **Auth & Rest API Interception**: Mocking HTTP calls using Playwright's `page.route()` to mimic user verification, campaign fetching, and query ordering.
-
----
-
-## 4. Premium SaaS Core Modules (Phase 10 Implementation) 🚀
-
-Vectra now includes high-fidelity interactive modules that compose the core SaaS value proposition:
-
-### a) Unified Inbox & Magic Replies (`/app/inbox`)
-- **Triple-pane layout**:
-  - Left panel: Search filter and sentiment categorization filters (*Tous*, *Intéressés*, *Objections*, *Désabonnés*).
-  - Center panel: Thread history displaying cold email outreach vs prospect response with an inline text area to reply.
-  - Right panel: Prospect meta profile information and **Magic Replies (IA)** buttons (*Proposer un appel*, *Justifier le Tarif*, *Envoyer un Use Case*).
-- **Interaction**: Clicking any Magic Reply triggers a simulated AI loading state and inserts a highly customized context-aware template into the editor. Sending a reply posts the message to the thread and fires a Toast confirmation and PostHog analytics event (`inbox_reply_sent`).
-
-### b) Agents & Workflows Control Panel (`/app/agents`)
-- **Agent Activation**: Dedicated toggles to activate/deactivate **Hermes** (autonomous lead sourcing scraper), **Apollo** (outreach personalization engine), and **Athena** (sector news monitor).
-- **Global Settings Controls**:
-  - *Minimum Match Score* slider (dynamically filter leads by fit percentage).
-  - *Daily Leads / Credits limit* dropdown select.
-  - *Frequency selector* (daily, weekly, manual).
-  - *Outreach Language* & *Default Tone* configurations.
-- **Constraints Met**: The low-level developer terminal/logs console has been completely omitted to keep the view user-focused and modern. Saving configurations triggers a PostHog event (`agents_config_saved`).
-
-### c) Analytics & Conversion Funnel Dashboard (`/app/analytics`)
-- **KPI Stat Cards**: Real-time display of total messages sent, open rates, response rates, and scheduled meetings.
-- **Conversion Funnel**: A visual, CSS-based conversion funnel showing step-by-step drop-offs from raw imported leads to booked calls.
-- **Weekly Activity Chart**: An interactive bar chart comparing outgoing campaigns vs incoming replies.
-- **Campaign Comparison**: A tabular comparative matrix auditing fit rate, open rate, reply rate, and meetings booked across active campaigns.
-
-### d) Follow-up Tracker & Pipeline Alerting (`/app/followup`)
-- **Pipeline Overview & Quick Adding**: Displays active outbound threads, last contact date, next planned touchpoint, and dynamic CRM stage badges. A slide-over panel allows quick creation of new manual follow-up entries.
-- **Overdue Alerting System**: Automatically compares current date with the scheduled `follow_up_date` and renders a prominent, highly styled **"En retard" (Overdue)** warning badge on high-priority prospects.
-- **Quick Status Modifications**: In-line select fields to rapidly change statuses (*Pas de réponse*, *Relance 1*, *Meeting pris*, *Deal conclu*) with automated DB-sync triggers and dynamic row coloring.
-
-### e) Cold Calling AI Simulator & objection trainer (`/app/training`)
-- **Multi-Persona Selection**: Recreates distinct realistic buyer types:
-  - *Le CEO Pressé* (demands absolute immediate value and short calls).
-  - *Le CTO Sceptique* (raises data privacy questions, stack compatibility concerns).
-  - *Le RH sans Budget* (bureaucratic issues, corporate approvals).
-- **Difficulty Settings & Tone Adapters**: Easy (complaisant), Medium (realistic objections), and Hard (continuous objections).
-- **Interactive Call Simulator**: Sleek dark-mode header showing live call status, simulated typewriter delay, active typing indicators, and a message thread structure.
-- **Performance Evaluation Matrix**: Renders a post-simulation visual summary measuring critical sales metrics (e.g. *Listening Score*, *Persuasion Score*) using standard numerical indices. Fires PostHog event logs (`training_simulation_started`, `training_simulation_ended`).
-
-### f) Sourcing Optimization & Export Operations
-- **AI Match Score Badges**: Leads are automatically labeled with highly visual badging (*Fit: High*, *Fit: Medium*, *Fit: Low*) computed via cognitive analysis criteria.
-- **Pagination & Load More**: CRM library lists handle massive lead databases using non-blocking, smooth scroll/click pagination load states.
-- **Sentiment Profiling Filters**: Incoming inbox messages are grouped using semantic analysis tags (*Intéressés*, *Objections*, *Désabonnés*).
-- **Analytics CSV/XLSX Export**: Full-funnel campaign data and lead reports are exportable for external review in CSV format.
+### Sidebar
+- **Width**: `w-[260px]` expanded, `w-16` collapsed
+- **Background**: `bg-[#FBFBFC]`
+- **Header**: Workspace dropdown (emerald `W` logo + workspace name + chevron), collapse button
+- **Search shortcuts**: `⌘ K` (new search) and `⌘ /` (quick search) as styled button widgets
+- **Nav items**: `rounded-md`, active = `bg-zinc-200/60 text-zinc-900`, inactive hover = `hover:bg-zinc-100`
+- **Collections section**: Collapsible with `group-hover` reveal of `+` button
+- **Trial card** (bottom): Orange-bordered card with full progress bar and "trial complete" messaging
+- **Profile section**: Avatar initials + name + email + `ChevronDown`, opens `ProfileDropdown`
 
 ---
 
-## 5. Next Steps & Post-Phase 10 Roadmap
+## 5. Playwright E2E Testing
 
-With the complete SaaS stack (Sentry, PostHog, Resend, Stripe, and Secure Middleware), Wrangle integrations, and the 5 new premium pages fully implemented, buildable, and E2E verified:
-1. **Remove Local Mocks in Production Environment**: In the deployment staging workspace, swap out mock parameters to utilize active Stripe checkout links, live email deliveries, and real database triggers.
-2. **Production Database Seeding**: Initialize schema and triggers on the live Supabase instance.
-3. **Advanced AI Scoring Extensions**: Refine matching prompt algorithms inside `/api/generate` to scale with specialized tech title ICPs.
+All tests in `apps/web/tests/vectra.spec.ts` use structured mocks:
 
+1. **Session seeding** via `page.addInitScript()` injecting mock Supabase token
+2. **Auth & REST interception** via `page.route()` for campaign/lead/message queries
+
+```bash
+# Run all tests headless
+npx playwright test
+
+# Run with UI inspector
+npx playwright test --ui
+```
+
+---
+
+## 6. Core SaaS Modules
+
+| Module | Route | Status |
+|--------|-------|--------|
+| Dashboard | `/app` | ✅ |
+| Sourcing Copilot | `/app/sourcing` | ✅ |
+| Lead Library | `/app/library` | ✅ |
+| Outreach Hub | `/app/outreach` | ✅ |
+| Unified Inbox | `/app/inbox` | ✅ |
+| Agent Workflows | `/app/agents` | ✅ |
+| Analytics Funnel | `/app/analytics` | ✅ |
+| Follow-up Tracker | `/app/followup` | ✅ |
+| Cold Call Trainer | `/app/training` | ✅ |
+| Settings / Mailboxes | `/app/settings` | ✅ |
+
+---
+
+## 7. Next Steps & Roadmap
+
+1. **Real Sourcing Flow**: Implement end-to-end Campaign → Sourcing → Lead Gen → Message Gen using live API integrations
+2. **Nylas Email Sending**: Use `grant_id` from `mailboxes` table to send personalized outreach via Nylas V3 `/messages/send`
+3. **Production Env Swap**: Replace local mock parameters with live Stripe checkout links, real email delivery, and production Supabase triggers
+4. **Advanced AI Scoring**: Refine matching prompt algorithms in `/api/generate` to scale with specialized tech ICPs
+5. **Mobile Responsive Polish**: Adapt 260px sidebar to responsive breakpoints for tablet/mobile views

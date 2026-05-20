@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { getCompletion } from '@/lib/ai';
 
 // Helper to sleep for simulation delays
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -38,8 +39,9 @@ export async function POST(req: Request) {
 
         let expandedQuery = `site:linkedin.com/in AND "${query}"`;
         const openaiApiKey = process.env.OPENAI_API_KEY;
+        const openrouterApiKey = process.env.OPENROUTER_API_KEY;
 
-        if (openaiApiKey) {
+        if (openaiApiKey || openrouterApiKey) {
           try {
             const systemPrompt = `You are Hermes-Agent's Query Optimizer.
 Translate the user's natural language prospecting search query into a single, high-performance, structured Google Search operator query.
@@ -49,31 +51,16 @@ Example Input: "SaaS founders in Canada with small teams"
 Example Output: site:linkedin.com/in AND "founder" AND "Canada" AND ("saas" OR "software")
 Output ONLY the final raw search string, with no quotes around it, no markdown, and no explanation.`;
 
-            const openAiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${openaiApiKey}`
-              },
-              body: JSON.stringify({
-                model: 'gpt-4o-mini',
-                messages: [
-                  { role: 'system', content: systemPrompt },
-                  { role: 'user', content: query }
-                ],
-                temperature: 0.3
-              })
+            const textResult = await getCompletion({
+              systemPrompt,
+              userPrompt: query,
+              temperature: 0.3
             });
-
-            if (openAiRes.ok) {
-              const aiData = await openAiRes.json();
-              const textResult = aiData.choices?.[0]?.message?.content?.trim();
-              if (textResult) {
-                expandedQuery = textResult;
-              }
+            if (textResult) {
+              expandedQuery = textResult;
             }
           } catch (err) {
-            console.warn('OpenAI query expansion failed, falling back to local heuristics:', err);
+            console.warn('AI query expansion failed, falling back to local heuristics:', err);
           }
         } else {
           // Heuristic local translation

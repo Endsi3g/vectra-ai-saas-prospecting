@@ -40,11 +40,52 @@ import {
 import TourGuide from '@/components/TourGuide';
 import ProfileDropdown from '@/components/ProfileDropdown';
 
+function CollectionsList({ 
+  collections, 
+  pathname 
+}: { 
+  collections: any[]; 
+  pathname: string; 
+}) {
+  const searchParams = useSearchParams();
+  const activeCollectionId = searchParams ? searchParams.get('collection') : null;
+
+  if (collections.length === 0) {
+    return <p className="text-[10px] text-zinc-400 italic px-3">No collections added yet</p>;
+  }
+
+  return (
+    <div className="space-y-0.5 px-1 animate-in fade-in duration-300">
+      {collections.map((col) => {
+        const isActive = pathname === '/app/library' && activeCollectionId === col.id;
+        return (
+          <Link
+            key={col.id}
+            href={`/app/library?collection=${col.id}`}
+            className={`group flex items-center justify-between rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
+              isActive
+                ? 'bg-primary/8 text-primary font-bold'
+                : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950'
+            }`}
+          >
+            <span className="truncate max-w-[130px]">{col.name}</span>
+            <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold shrink-0 transition-colors ${
+              isActive
+                ? 'bg-primary/15 text-primary'
+                : 'bg-zinc-100 text-zinc-500 group-hover:bg-zinc-200'
+            }`}>
+              {col.count}
+            </span>
+          </Link>
+        );
+      })}
+    </div>
+  );
+}
+
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const activeCollectionId = searchParams ? searchParams.get('collection') : null;
 
   const [showTour, setShowTour] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
@@ -170,40 +211,49 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     let channel: any = null;
+    let mounted = true;
 
     const setupRealtime = async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        channel = supabase
-          .channel(`profile-layout-${user.id}`)
-          .on(
-            'postgres_changes',
-            {
-              event: 'UPDATE',
-              schema: 'public',
-              table: 'profiles',
-              filter: `id=eq.${user.id}`,
-            },
-            (payload) => {
-              const newProfile = payload.new as any;
-              if (newProfile) {
-                if (newProfile.credits_count !== undefined && newProfile.credits_count !== null) {
-                  setCreditsCount(newProfile.credits_count);
-                }
-                if (newProfile.credits_limit !== undefined && newProfile.credits_limit !== null) {
-                  setCreditsLimit(newProfile.credits_limit);
-                }
+      // Guard: if effect was cleaned up before async resolved, bail out
+      if (!mounted || !user) return;
+
+      // Remove any pre-existing channel with the same name before subscribing
+      const channelName = `profile-layout-${user.id}`;
+      await supabase.removeAllChannels();
+
+      channel = supabase
+        .channel(channelName)
+        .on(
+          'postgres_changes',
+          {
+            event: 'UPDATE',
+            schema: 'public',
+            table: 'profiles',
+            filter: `id=eq.${user.id}`,
+          },
+          (payload) => {
+            const newProfile = payload.new as any;
+            if (newProfile) {
+              if (newProfile.credits_count !== undefined && newProfile.credits_count !== null) {
+                setCreditsCount(newProfile.credits_count);
+              }
+              if (newProfile.credits_limit !== undefined && newProfile.credits_limit !== null) {
+                setCreditsLimit(newProfile.credits_limit);
               }
             }
-          )
-          .subscribe();
-      }
+          }
+        )
+        .subscribe();
     };
+
     setupRealtime();
 
     return () => {
+      mounted = false;
       if (channel) {
         supabase.removeChannel(channel);
+        channel = null;
       }
     };
   }, []);
@@ -300,12 +350,17 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   if (isSettingsPage) {
     return (
       <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-50 select-none text-zinc-950 font-sans">
-        {/* Top green trial banner */}
-        <div className="h-9 w-full flex items-center justify-center bg-primary/5 text-primary text-xs font-semibold border-b border-primary/15 shrink-0 select-none">
-          <span className="flex items-center gap-1.5">
-            <span>You have 5 more searches on your Starter trial.</span>
-            <Link href="/app/settings/plans" className="underline font-bold hover:opacity-80 ml-1">Explore plans</Link>
-          </span>
+        {/* Unified Orange Trial Announcement Bar */}
+        <div className="relative w-full border-b border-orange-100 flex items-center justify-center py-2 px-4 z-20 bg-pattern shrink-0 select-none">
+          <div className="absolute inset-0 bg-white/60 pointer-events-none"></div>
+          
+          <div className="relative flex items-center justify-center gap-2 text-orange-600 font-medium text-xs sm:text-sm">
+            <svg className="w-4 h-4 shrink-0 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span className="truncate max-w-[280px] xs:max-w-none">Your Starter trial is over. Upgrade to keep finding candidates, exporting collections, and sharing with your team.</span>
+            <Link href="/app/settings/plans" className="font-semibold underline hover:text-orange-700 ml-1 transition-colors whitespace-nowrap">Explore plans</Link>
+          </div>
         </div>
 
         {/* Lower container containing Sidebar and Main Area */}
@@ -365,229 +420,219 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="flex h-screen w-screen overflow-hidden bg-zinc-50 select-none text-zinc-950 font-sans">
+    <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-50 select-none text-zinc-950 font-sans">
       
-      {/* Sidebar navigation */}
-      <aside 
-        className={`flex flex-col border-r border-zinc-200 bg-white transition-all duration-300 shrink-0 relative ${
-          isCollapsed ? 'w-16' : 'w-64'
-        }`}
-      >
-        {/* Brand Workspace Header */}
-        <div className="flex h-16 items-center justify-between px-4 border-b border-zinc-100">
-          <div className="flex items-center gap-3 overflow-hidden">
-            <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-white font-extrabold text-sm shadow-sm select-none">
-              W
-            </div>
-            {!isCollapsed && (
-              <div className="flex flex-col min-w-0 select-none">
-                <span className="font-extrabold text-zinc-950 text-sm tracking-tight truncate leading-none">
-                  Kael's Workspace
-                </span>
-                <span className="text-[10px] text-zinc-400 font-medium truncate mt-0.5">
-                  Building Search
-                </span>
+      {/* Unified Orange Trial Announcement Bar */}
+      <div className="relative w-full border-b border-orange-100 flex items-center justify-center py-2 px-4 z-20 bg-pattern shrink-0 select-none">
+        <div className="absolute inset-0 bg-white/60 pointer-events-none"></div>
+        
+        <div className="relative flex items-center justify-center gap-2 text-orange-600 font-medium text-xs sm:text-sm">
+          <svg className="w-4 h-4 shrink-0 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+          </svg>
+          <span className="truncate max-w-[280px] xs:max-w-none">Your Starter trial is over. Upgrade to keep finding candidates, exporting collections, and sharing with your team.</span>
+          <Link href="/app/settings/plans" className="font-semibold underline hover:text-orange-700 ml-1 transition-colors whitespace-nowrap">Explore plans</Link>
+        </div>
+      </div>
+
+      <div className="flex flex-1 overflow-hidden">
+        {/* Sidebar navigation */}
+        <aside 
+          className={`flex flex-col border-r border-zinc-200 bg-[#FBFBFC] transition-all duration-300 shrink-0 relative ${
+            isCollapsed ? 'w-16' : 'w-[260px]'
+          }`}
+        >
+          {/* Brand Workspace Header */}
+          <div className="p-3 border-b border-zinc-100 select-none">
+            {isCollapsed ? (
+              <button 
+                onClick={() => setIsCollapsed(false)}
+                className="flex h-8 w-8 mx-auto items-center justify-center rounded bg-emerald-500 text-white font-bold text-xs select-none hover:opacity-90 transition-opacity"
+                title="Expand sidebar"
+              >
+                W
+              </button>
+            ) : (
+              <div className="flex items-center justify-between">
+                <button className="flex items-center gap-2 hover:bg-zinc-100 px-2 py-1.5 rounded-md w-full text-left font-medium transition-colors">
+                  <div className="w-5 h-5 bg-emerald-500 rounded text-white flex items-center justify-center text-xs font-bold">W</div>
+                  <span className="flex-1 truncate text-zinc-950 text-xs font-semibold">WrangleSaaS</span>
+                  <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                  </svg>
+                </button>
+                <button 
+                  onClick={() => setIsCollapsed(true)}
+                  className="text-zinc-400 hover:text-zinc-600 ml-1 p-1 transition-colors"
+                  title="Collapse sidebar"
+                >
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 19l-7-7 7-7m8 14l-7-7 7-7"></path>
+                  </svg>
+                </button>
               </div>
             )}
           </div>
-          <button 
-            onClick={() => setIsCollapsed(!isCollapsed)}
-            className="hidden md:flex h-6 w-6 items-center justify-center rounded-md border border-zinc-200 bg-zinc-50 text-zinc-500 hover:bg-zinc-100"
-          >
-            {isCollapsed ? <ChevronRight className="h-3 w-3" /> : <ChevronLeft className="h-3 w-3" />}
-          </button>
-        </div>
 
-        {/* Quick Search Shortcut Inputs */}
-        {!isCollapsed && (
-          <div className="px-3 py-3 space-y-2 select-none border-b border-zinc-100">
-            {/* Quick search input */}
-            <div className="relative">
-              <input
-                type="text"
-                placeholder="New search"
-                readOnly
-                className="w-full h-8 rounded-lg border border-zinc-200 bg-zinc-50 pl-8 pr-10 text-xs text-zinc-500 placeholder-zinc-400 focus-visible:outline-none cursor-pointer hover:bg-zinc-100/50 transition-all"
-              />
-              <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-400" />
-              <div className="absolute right-2 top-1.5 flex gap-0.5 items-center select-none text-[8px] font-bold text-zinc-400 bg-zinc-200/50 px-1 py-0.5 rounded">
-                <span>⌘</span>
-                <span>K</span>
+          {/* Quick Search Shortcut Inputs */}
+          {!isCollapsed && (
+            <div className="px-3 py-3 space-y-2 select-none border-b border-zinc-100">
+              <div className="flex gap-1">
+                <button className="flex-1 flex items-center justify-between bg-white border border-zinc-200 rounded-md px-2.5 py-1.5 text-zinc-500 hover:border-zinc-300 shadow-sm text-xs transition-colors">
+                  <div className="flex items-center gap-2">
+                    <Search className="w-3.5 h-3.5 text-zinc-400" />
+                    <span>New search</span>
+                  </div>
+                  <span className="bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded text-[10px] font-medium border border-zinc-200 shadow-sm">⌘ K</span>
+                </button>
+                <button className="flex items-center justify-center bg-white border border-zinc-200 rounded-md w-8 h-8 text-zinc-500 hover:border-zinc-300 shadow-sm transition-colors">
+                  <span className="bg-zinc-100 text-zinc-500 px-1.5 py-0.5 rounded text-[10px] font-medium border border-zinc-200 shadow-sm">⌘ /</span>
+                </button>
               </div>
             </div>
+          )}
 
-            {/* Quick action button */}
-            <button className="w-full h-8 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 flex items-center justify-between px-3 text-xs text-zinc-600 font-bold transition-all shadow-sm">
-              <span className="flex items-center gap-2">
-                <Search className="h-3.5 w-3.5 text-zinc-400 animate-pulse" />
-                <span>Search</span>
-              </span>
-              <div className="flex gap-0.5 items-center select-none text-[8px] font-bold text-zinc-400 bg-zinc-100 border border-zinc-200 px-1 py-0.5 rounded">
-                <span>⌘</span>
-                <span>/</span>
-              </div>
-            </button>
-          </div>
-        )}
+          {/* Nav Navigation List */}
+          <nav className="flex-1 space-y-0.5 px-3 py-2 overflow-y-auto">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href;
+              const Icon = item.icon;
 
-        {/* Nav Navigation List */}
-        <nav className="flex-1 space-y-1 px-2 py-3 overflow-y-auto">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
-            const Icon = item.icon;
+              return (
+                <Link
+                  key={item.name}
+                  href={item.href}
+                  id={`sidebar-nav-${item.name.toLowerCase()}`}
+                  className={`flex items-center gap-3 rounded-md px-2 py-1.5 text-sm font-medium transition-colors select-none ${
+                    isActive 
+                      ? 'bg-zinc-200/60 text-zinc-900 font-medium' 
+                      : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
+                  }`}
+                  title={isCollapsed ? item.name : undefined}
+                >
+                  <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-zinc-800' : 'text-zinc-400'}`} />
+                  {!isCollapsed && <span>{item.name}</span>}
+                </Link>
+              );
+            })}
 
-            return (
-              <Link
-                key={item.name}
-                href={item.href}
-                id={`sidebar-nav-${item.name.toLowerCase()}`}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2 text-xs font-bold transition-colors select-none ${
-                  isActive 
-                    ? 'bg-primary/10 text-primary' 
-                    : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900'
-                }`}
-                title={isCollapsed ? item.name : undefined}
-              >
-                <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-primary' : 'text-zinc-400'}`} />
-                {!isCollapsed && <span>{item.name}</span>}
-              </Link>
-            );
-          })}
-
-          {/* Collections foldable lists */}
-          {!isCollapsed && (
-            <div className="pt-4 border-t border-zinc-100 space-y-2">
-              <div className="flex items-center justify-between px-3 text-[10px] font-bold text-zinc-400 uppercase tracking-wider select-none">
-                <span>Collections</span>
-                <Plus 
-                  onClick={() => setShowCreateModal(true)} 
-                  className="h-3.5 w-3.5 text-zinc-400 hover:text-zinc-950 hover:scale-110 transition-transform cursor-pointer" 
-                />
-              </div>
-              {collections.length === 0 ? (
-                <p className="text-[10px] text-zinc-400 italic px-3">No collections added yet</p>
-              ) : (
-                <div className="space-y-0.5 px-1 animate-in fade-in duration-300">
-                  {collections.map((col) => {
-                    const isActive = pathname === '/app/library' && activeCollectionId === col.id;
-                    return (
-                      <Link
-                        key={col.id}
-                        href={`/app/library?collection=${col.id}`}
-                        className={`group flex items-center justify-between rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
-                          isActive
-                            ? 'bg-primary/8 text-primary font-bold'
-                            : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950'
-                        }`}
-                      >
-                        <span className="truncate max-w-[130px]">{col.name}</span>
-                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold shrink-0 transition-colors ${
-                          isActive
-                            ? 'bg-primary/15 text-primary'
-                            : 'bg-zinc-100 text-zinc-500 group-hover:bg-zinc-200'
-                        }`}>
-                          {col.count}
-                        </span>
-                      </Link>
-                    );
-                  })}
+            {/* Collections foldable lists */}
+            {!isCollapsed && (
+              <div className="pt-6 pb-2">
+                <div className="flex items-center justify-between px-2 text-xs font-semibold text-zinc-500 hover:text-zinc-700 transition-colors group cursor-pointer">
+                  <span className="flex items-center gap-1.5">
+                    Collections
+                    <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                  </span>
+                  <Plus 
+                    onClick={() => setShowCreateModal(true)} 
+                    className="h-4 w-4 text-zinc-400 hover:text-zinc-950 hover:scale-110 transition-all cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity duration-200" 
+                  />
                 </div>
-              )}
-            </div>
-          )}
-        </nav>
-
-        {/* Bottom Widgets & Account Section */}
-        <div className="p-3 border-t border-zinc-100 space-y-3 bg-zinc-50/50 shrink-0">
-
-          {/* Monthly Credits Balance widget */}
-          {!isCollapsed && (
-            <div className={`flex items-center justify-between text-xs px-2 select-none border border-transparent transition-all duration-500 rounded-lg ${
-              creditsFlash
-                ? 'bg-primary/5 border-primary/20 text-primary scale-[1.02] py-1.5 shadow-sm'
-                : 'border-b border-zinc-100 pb-2'
-            }`}>
-              <div className="flex items-center gap-2 text-zinc-500 font-medium">
-                <Coins className={`h-4 w-4 shrink-0 transition-all duration-300 ${
-                  creditsFlash ? 'text-primary scale-110' : 'text-amber-500'
-                }`} />
-                <span className={creditsFlash ? 'text-primary font-bold' : ''}>Monthly Credits</span>
+                <div className="mt-2">
+                  <React.Suspense fallback={<p className="text-[10px] text-zinc-400 italic px-3">Loading...</p>}>
+                    <CollectionsList collections={collections} pathname={pathname} />
+                  </React.Suspense>
+                </div>
               </div>
-              <span className={`font-extrabold transition-all duration-300 ${
-                creditsFlash ? 'text-primary scale-105 text-sm' : 'text-zinc-800'
+            )}
+          </nav>
+
+          {/* Bottom Widgets & Account Section */}
+          <div className="p-3 border-t border-zinc-200/60 space-y-1 bg-[#FBFBFC] shrink-0">
+
+            {/* Monthly Credits Balance widget */}
+            {!isCollapsed && (
+              <div className={`flex items-center justify-between text-xs px-2 select-none border border-transparent transition-all duration-500 rounded-lg ${
+                creditsFlash
+                  ? 'bg-primary/5 border-primary/20 text-primary scale-[1.02] py-1.5 shadow-sm'
+                  : 'pb-2'
               }`}>
-                {creditsCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
-              </span>
-            </div>
-          )}
-
-          {/* Trial Progress Bar Widget */}
-          {!isCollapsed ? (
-            <div className="rounded-xl bg-white border border-zinc-200/80 p-3 shadow-sm space-y-2 select-none">
-              <div className="flex justify-between items-center text-[10px] font-bold text-zinc-600">
-                <span>Trial Active (Starter)</span>
-                <span className="text-primary">14 days left</span>
+                <div className="flex items-center gap-2 text-zinc-500 font-medium">
+                  <Coins className={`h-4 w-4 shrink-0 transition-all duration-300 ${
+                    creditsFlash ? 'text-primary scale-110' : 'text-amber-500'
+                  }`} />
+                  <span className={creditsFlash ? 'text-primary font-bold' : ''}>Monthly Credits</span>
+                </div>
+                <span className={`font-extrabold transition-all duration-300 ${
+                  creditsFlash ? 'text-primary scale-105 text-sm' : 'text-zinc-800'
+                }`}>
+                  {creditsCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+                </span>
               </div>
-              <div className="w-full bg-zinc-100 rounded-full h-1.5">
-                <div className="bg-primary h-1.5 rounded-full w-[80%]" />
-              </div>
-              <p className="text-[10px] text-zinc-400 leading-normal">
-                Upgrade to scale campaigns and unlock unlimited credits.
-              </p>
-            </div>
-          ) : (
-            <div 
-              className="flex justify-center h-8 w-8 items-center rounded-lg bg-amber-50 text-amber-700 border border-amber-200 text-[10px] font-extrabold mx-auto cursor-help"
-              title={`${creditsCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")} monthly credits & trial active`}
-            >
-              {creditsCount >= 1000 ? Math.floor(creditsCount / 1000) + 'K' : creditsCount}
-            </div>
-          )}
+            )}
 
-          {/* User profile dropdown triggers */}
-          <div className="relative">
-            <button
-              onClick={() => setIsProfileOpen(!isProfileOpen)}
-              className="w-full flex items-center justify-between rounded-xl p-1.5 text-left hover:bg-zinc-100/80 transition-colors"
-            >
-              <div className="flex items-center gap-2.5 min-w-0">
-                <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-xs shrink-0 select-none">
-                  {userEmail ? userEmail.slice(0, 2).toUpperCase() : 'KB'}
+            {/* Trial Progress Bar Widget */}
+            {!isCollapsed ? (
+              <div className="relative overflow-hidden mb-3 p-3 rounded-lg border border-orange-100 shadow-sm bg-white select-none">
+                <div className="absolute inset-0 bg-pattern opacity-30 pointer-events-none"></div>
+                <div className="absolute top-0 left-0 w-full h-8 bg-gradient-to-b from-green-50/50 to-transparent pointer-events-none"></div>
+                
+                <div className="relative z-10 space-y-2">
+                  <h4 className="font-medium text-zinc-900 text-xs leading-none">Your Starter trial is complete</h4>
+                  <p className="text-zinc-500 text-[11px] leading-tight">You've used all 7 days of your trial, upgrade to continue using all features.</p>
+                  
+                  <div className="w-full bg-zinc-100 rounded-full h-1.5 overflow-hidden border border-zinc-200/50">
+                    <div className="bg-gradient-to-r from-orange-400 to-orange-500 h-1.5 rounded-full w-full"></div>
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div 
+                className="flex justify-center h-8 w-8 items-center rounded-lg bg-orange-50 text-orange-700 border border-orange-200 text-[10px] font-extrabold mx-auto cursor-help mb-2"
+                title="Your Starter trial is complete. Upgrade to continue."
+              >
+                100%
+              </div>
+            )}
+
+            {/* User profile dropdown triggers */}
+            <div className="relative">
+              <button
+                onClick={() => setIsProfileOpen(!isProfileOpen)}
+                className="w-full flex items-center justify-between rounded-xl p-1.5 text-left hover:bg-zinc-100/80 transition-colors"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-xs shrink-0 select-none">
+                    {userEmail ? userEmail.slice(0, 2).toUpperCase() : 'KB'}
+                  </div>
+                  {!isCollapsed && (
+                    <div className="flex flex-col min-w-0">
+                      <span className="text-xs font-bold text-zinc-700 truncate capitalize">
+                        {userEmail ? userEmail.split('@')[0] : 'Kael Belceus'}
+                      </span>
+                      <span className="text-[10px] text-zinc-400 truncate">
+                        {userEmail || 'kael@wrangle.com'}
+                      </span>
+                    </div>
+                  )}
                 </div>
                 {!isCollapsed && (
-                  <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-bold text-zinc-700 truncate capitalize">
-                      {userEmail ? userEmail.split('@')[0] : 'Kael Belceus'}
-                    </span>
-                    <span className="text-[10px] text-zinc-400 truncate">
-                      {userEmail || 'kael@wrangle.com'}
-                    </span>
-                  </div>
+                  <ChevronDown className="h-4 w-4 text-zinc-400 shrink-0" />
                 )}
-              </div>
-              {!isCollapsed && (
-                <ChevronDown className="h-4 w-4 text-zinc-400 shrink-0" />
-              )}
-            </button>
+              </button>
 
-            {/* Profile Dropdown Popover */}
-            <ProfileDropdown 
-              isOpen={isProfileOpen}
-              onClose={() => setIsProfileOpen(false)}
-              userEmail={userEmail}
-              onSignOut={handleSignOut}
-              creditsCount={creditsCount}
-              creditsLimit={creditsLimit}
-            />
+              {/* Profile Dropdown Popover */}
+              <ProfileDropdown 
+                isOpen={isProfileOpen}
+                onClose={() => setIsProfileOpen(false)}
+                userEmail={userEmail}
+                onSignOut={handleSignOut}
+                creditsCount={creditsCount}
+                creditsLimit={creditsLimit}
+              />
+            </div>
+
           </div>
+        </aside>
 
-        </div>
-      </aside>
-
-      {/* Main Content Area */}
-      <main className="flex-1 flex flex-col h-full overflow-hidden bg-zinc-50">
-        {children}
-      </main>
+        {/* Main Content Area */}
+        <main className="flex-1 flex flex-col h-full overflow-hidden bg-zinc-50">
+          {children}
+        </main>
+      </div>
 
       {showCreateModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/40 backdrop-blur-md animate-in fade-in duration-200">

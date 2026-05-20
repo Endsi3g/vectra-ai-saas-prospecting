@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { getCompletion } from '@/lib/ai';
 
 // Helper to sleep for simulation delays
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -297,15 +298,15 @@ export async function POST(req: Request) {
 
           let generated: any;
 
-          // Call real OpenAI API if key is present
-          if (process.env.OPENAI_API_KEY) {
+          // Call real OpenAI/OpenRouter API if key is present
+          if (process.env.OPENAI_API_KEY || process.env.OPENROUTER_API_KEY) {
             try {
               const systemPrompt = `You are Hermes-Agent, an elite sales copywriter.
 Analyze the prospect's background and campaign requirements.
 Campaign Offer: "${campaignDetails.offer || ''}"
 Campaign Angle: "${campaignDetails.angle || 'audit'}" (${campaignDetails.angle_description || ''})
 Campaign Call to Action: "${campaignDetails.call_to_action || ''}"
-Additional Guidelines: "${campaignDetails.extra_instructions || ''}"
+Campaign Guidelines: "${campaignDetails.extra_instructions || ''}"
 Language target: ${lang}
 Tone constraint: ${tone}
 
@@ -322,39 +323,23 @@ Company: ${lead.company}
 Website: ${lead.website || 'N/A'}
 Notes/ICP context: ${lead.notes || 'N/A'}`;
 
-              const openAiRes = await fetch('https://api.openai.com/v1/chat/completions', {
-                method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json',
-                  'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
-                },
-                body: JSON.stringify({
-                  model: 'gpt-4o-mini',
-                  response_format: { type: 'json_object' },
-                  messages: [
-                    { role: 'system', content: systemPrompt },
-                    { role: 'user', content: userPrompt }
-                  ],
-                  temperature: 0.7
-                })
+              const textResult = await getCompletion({
+                systemPrompt,
+                userPrompt,
+                jsonMode: true,
+                temperature: 0.7
               });
 
-              if (openAiRes.ok) {
-                const aiData = await openAiRes.json();
-                const textResult = aiData.choices?.[0]?.message?.content || '';
-                const parsed = JSON.parse(textResult);
-                generated = {
-                  summary: parsed.summary || '',
-                  email_subject: parsed.email_subject || '',
-                  email_body: parsed.email_body || '',
-                  linkedin_message: parsed.linkedin_message || '',
-                  personalization_score: Number(parsed.personalization_score) || getRandomScore()
-                };
-              } else {
-                throw new Error(`OpenAI API status error: ${openAiRes.status}`);
-              }
+              const parsed = JSON.parse(textResult);
+              generated = {
+                summary: parsed.summary || '',
+                email_subject: parsed.email_subject || '',
+                email_body: parsed.email_body || '',
+                linkedin_message: parsed.linkedin_message || '',
+                personalization_score: Number(parsed.personalization_score) || getRandomScore()
+              };
             } catch (err) {
-              console.warn('Real OpenAI call failed, falling back to local mock template:', err);
+              console.warn('Real AI generation call failed, falling back to local mock template:', err);
               generated = generateMockOutreach(lead, campaignDetails, tone, lang, userFirstName);
             }
           } else {

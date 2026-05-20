@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 
 // GET: Nylas webhook handshake verification challenge
 export async function GET(request: Request) {
@@ -37,7 +37,7 @@ export async function POST(request: Request) {
 
       // 1. Identify or retrieve the connected mailbox linked to this grant_id
       let mailboxId = '00000000-0000-0000-0000-000000000000';
-      const { data: mailboxData } = await supabase
+      const { data: mailboxData } = await supabaseAdmin
         .from('mailboxes')
         .select('id')
         .eq('nylas_grant_id', grantId)
@@ -47,7 +47,7 @@ export async function POST(request: Request) {
         mailboxId = mailboxData.id;
       } else {
         // Fallback: search for first active mailbox if mock testing
-        const { data: firstMailbox } = await supabase.from('mailboxes').select('id').limit(1).single();
+        const { data: firstMailbox } = await supabaseAdmin.from('mailboxes').select('id').limit(1).single();
         if (firstMailbox) {
           mailboxId = firstMailbox.id;
         }
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
       let leadId = '00000000-0000-0000-0000-000000000000';
       
       // Let's check if lead exists by email
-      const { data: existingLead } = await supabase
+      const { data: existingLead } = await supabaseAdmin
         .from('leads')
         .select('id')
         .eq('email', senderEmail.toLowerCase())
@@ -69,12 +69,12 @@ export async function POST(request: Request) {
       } else {
         // Create a mock campaign if none exists
         let campaignId = '00000000-0000-0000-0000-000000000000';
-        const { data: firstCampaign } = await supabase.from('campaigns').select('id').limit(1).single();
+        const { data: firstCampaign } = await supabaseAdmin.from('campaigns').select('id').limit(1).single();
         if (firstCampaign) {
           campaignId = firstCampaign.id;
         } else {
           // Insert a fallback campaign
-          const { data: newCampaign } = await supabase
+          const { data: newCampaign } = await supabaseAdmin
             .from('campaigns')
             .insert({
               name: 'Inbound Campaigns',
@@ -85,7 +85,7 @@ export async function POST(request: Request) {
           if (newCampaign) campaignId = newCampaign.id;
         }
 
-        const { data: newLead } = await supabase
+        const { data: newLead } = await supabaseAdmin
           .from('leads')
           .insert({
             campaign_id: campaignId,
@@ -122,7 +122,7 @@ export async function POST(request: Request) {
       console.log(`[Nylas IA Webhook] Classified sentiment as: ${sentiment}`);
 
       // 4. Upsert the Conversation inside local Supabase DB
-      const { data: activeConversation, error: convError } = await supabase
+      const { data: activeConversation, error: convError } = await supabaseAdmin
         .from('inbox_conversations')
         .upsert({
           lead_id: leadId,
@@ -143,7 +143,7 @@ export async function POST(request: Request) {
       const conversationId = activeConversation.id;
 
       // 5. Save incoming message with pre-populated AI magic_reply_draft in database
-      const { error: msgError } = await supabase
+      const { error: msgError } = await supabaseAdmin
         .from('inbox_messages')
         .insert({
           conversation_id: conversationId,

@@ -17,13 +17,12 @@ export async function GET(request: Request) {
     return NextResponse.redirect(mockCallbackUrl.toString());
   }
 
-  // Build the authentic Nylas Hosted OAuth Authorize URL
-  const nylasAuthUrl = new URL('https://api.nylas.com/oauth/authorize');
+  // Build the authentic Nylas Hosted OAuth Authorize URL for v3
+  const nylasAuthUrl = new URL('https://api.us.nylas.com/v3/connect/auth');
   nylasAuthUrl.searchParams.set('client_id', clientId);
   nylasAuthUrl.searchParams.set('redirect_uri', redirectUri);
   nylasAuthUrl.searchParams.set('response_type', 'code');
-  nylasAuthUrl.searchParams.set('scopes', 'email.modify,email.send,email.drafts');
-  nylasAuthUrl.searchParams.set('provider', provider === 'gmail' ? 'google' : 'outlook');
+  nylasAuthUrl.searchParams.set('provider', provider === 'gmail' ? 'google' : 'microsoft');
   
   return NextResponse.redirect(nylasAuthUrl.toString());
 }
