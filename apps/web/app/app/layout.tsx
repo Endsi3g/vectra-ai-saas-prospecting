@@ -30,7 +30,9 @@ import {
   ArrowLeft,
   Palette,
   Gift,
-  Terminal
+  Terminal,
+  MessageSquare,
+  TrendingUp
 } from 'lucide-react';
 import TourGuide from '@/components/TourGuide';
 import ProfileDropdown from '@/components/ProfileDropdown';
@@ -174,9 +176,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       icon: Mail,
     },
     {
+      name: 'Inbox',
+      href: '/app/inbox',
+      icon: MessageSquare,
+    },
+    {
       name: 'Agents',
-      href: '#',
+      href: '/app/agents',
       icon: Bot,
+    },
+    {
+      name: 'Analytics',
+      href: '/app/analytics',
+      icon: TrendingUp,
     },
   ];
 

@@ -139,13 +139,42 @@ To keep End-to-End tests fast and isolated from network failures (`net::ERR_NAME
      user: { id: 'mock-user-id', email: 'kael@example.com' }
    }));
    ```
+
 2. **Auth & Rest API Interception**: Mocking HTTP calls using Playwright's `page.route()` to mimic user verification, campaign fetching, and query ordering.
 
 ---
 
-## 4. Next Steps & Post-Phase 8 Roadmap
+## 4. Premium SaaS Core Modules (Phase 10 Implementation) 🚀
 
-With the complete SaaS stack (Sentry, PostHog, Resend, Stripe, and Secure Middleware) and Wrangle integrations fully implemented and verified, the next items on the roadmap are:
-1. **Remove Local Mocks in Production Environment**: In the deployment staging workspace, swap out mock parameters to utilize active Stripe checkout links and live email deliveries.
-2. **Production Database Seeding & Triggers**: Configure live Postgres functions and trigger sequences on Supabase for table event handling.
+Vectra now includes high-fidelity interactive modules that compose the core SaaS value proposition:
+
+### a) Unified Inbox & Magic Replies (`/app/inbox`)
+- **Triple-pane layout**:
+  - Left panel: Search filter and sentiment categorization filters (*Tous*, *Intéressés*, *Objections*, *Désabonnés*).
+  - Center panel: Thread history displaying cold email outreach vs prospect response with an inline text area to reply.
+  - Right panel: Prospect meta profile information and **Magic Replies (IA)** buttons (*Proposer un appel*, *Justifier le Tarif*, *Envoyer un Use Case*).
+- **Interaction**: Clicking any Magic Reply triggers a simulated AI loading state and inserts a highly customized context-aware template into the editor. Sending a reply posts the message to the thread and fires a Toast confirmation and PostHog analytics event (`inbox_reply_sent`).
+
+### b) Agents & Workflows Control Panel (`/app/agents`)
+- **Agent Activation**: Dedicated toggles to activate/deactivate **Hermes** (autonomous lead sourcing scraper), **Apollo** (outreach personalization engine), and **Athena** (sector news monitor).
+- **Global Settings Controls**:
+  - *Minimum Match Score* slider (dynamically filter leads by fit percentage).
+  - *Daily Leads / Credits limit* dropdown select.
+  - *Frequency selector* (daily, weekly, manual).
+  - *Outreach Language* & *Default Tone* configurations.
+- **Constraints Met**: The low-level developer terminal/logs console has been completely omitted to keep the view user-focused and modern. Saving configurations triggers a PostHog event (`agents_config_saved`).
+
+### c) Analytics & Conversion Funnel Dashboard (`/app/analytics`)
+- **KPI Stat Cards**: Real-time display of total messages sent, open rates, response rates, and scheduled meetings.
+- **Conversion Funnel**: A visual, CSS-based conversion funnel showing step-by-step drop-offs from raw imported leads to booked calls.
+- **Weekly Activity Chart**: An interactive bar chart comparing outgoing campaigns vs incoming replies.
+- **Campaign Comparison**: A tabular comparative matrix auditing fit rate, open rate, reply rate, and meetings booked across active campaigns.
+
+---
+
+## 5. Next Steps & Post-Phase 10 Roadmap
+
+With the complete SaaS stack (Sentry, PostHog, Resend, Stripe, and Secure Middleware), Wrangle integrations, and the 3 new premium pages fully implemented, buildable, and E2E verified:
+1. **Remove Local Mocks in Production Environment**: In the deployment staging workspace, swap out mock parameters to utilize active Stripe checkout links, live email deliveries, and real database triggers.
+2. **Production Database Seeding**: Initialize schema and triggers on the live Supabase instance.
 3. **Advanced AI Scoring Extensions**: Refine matching prompt algorithms inside `/api/generate` to scale with specialized tech title ICPs.

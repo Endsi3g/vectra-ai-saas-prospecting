@@ -42,12 +42,14 @@ To create a premium feel, Vectra incorporates several micro-animations:
 
 ---
 
-## 4. Layout Architecture: Resizable Splits & Columns
+## 4. Layout Architecture: Splits, Panels & Dashboard Components
 
 Layout spacing focuses on content-density without clutter:
 - **Left Navigation Sidebar**: Locked width (`w-64`), containing user workspace metadata, navigation items with stable IDs, credits meter, and workspace session profile.
 - **Split-Screen Panel View**: Implemented using resizable containers (`ResizablePanelGroup`) to segment natural language parameters on the left and interactive results lists on the right.
 - **Floating Controls**: Fixed footer overlays with linear gradients that blend with background elements, ensuring smooth scroll experiences.
+- **Triple-Pane Inbox Layout**: A high-density grid (`w-80` list panel, `flex-1` messaging panel, and `w-80` detail/action panel) for conversations, messaging history, and AI reply assistants.
+- **Analytics KPI Stat Cards & SVG/CSS Charts**: A responsive grid containing visual KPIs and a customized vector chart comparison element for weekly activity tracking.
 
 ---
 

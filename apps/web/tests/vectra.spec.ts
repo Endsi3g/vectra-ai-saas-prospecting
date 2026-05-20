@@ -250,4 +250,31 @@ test.describe('Vectra E2E UI Tests', () => {
     await expect(page.locator('text=LEVER')).toBeVisible();
     await expect(page.locator('button:has-text("Add to Slack")')).toBeVisible();
   });
+
+  test('6. New Premium Modules validation (Inbox, Agents, Analytics)', async ({ page }) => {
+    // 1. Check Inbox Page
+    await page.goto('/app/inbox');
+    await expect(page.locator('header').getByText('Inbox', { exact: true })).toBeVisible();
+    await expect(page.locator('text=Sarah Jenkins').first()).toBeVisible();
+    await expect(page.locator('text=Magic Replies (IA)')).toBeVisible();
+    await expect(page.locator('button:has-text("Proposer un appel")')).toBeVisible();
+
+    // 2. Check Agents Page
+    await page.goto('/app/agents');
+    await expect(page.locator('header').getByText('Agents', { exact: true })).toBeVisible();
+    await expect(page.locator('text=Hermes (Sourcing Automatique)')).toBeVisible();
+    await expect(page.locator('text=Apollo (Analyse & Personnalisation)')).toBeVisible();
+    await expect(page.locator('text=Score de Match Minimum')).toBeVisible();
+    // Verify that NO terminal/log console is present on page
+    await expect(page.locator('text=Console Terminal')).not.toBeVisible();
+    await expect(page.locator('text=Crawling, Scoring, Draft generation')).not.toBeVisible();
+
+    // 3. Check Analytics Page
+    await page.goto('/app/analytics');
+    await expect(page.locator('header').getByText('Analytics', { exact: true })).toBeVisible();
+    await expect(page.locator('text=Taux d\'Ouverture')).toBeVisible();
+    await expect(page.locator('text=Taux de Réponse')).toBeVisible();
+    await expect(page.locator('text=Leads Importés')).toBeVisible();
+    await expect(page.locator('text=Appels Planifiés').first()).toBeVisible();
+  });
 });
