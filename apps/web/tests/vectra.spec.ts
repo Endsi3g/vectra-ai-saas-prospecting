@@ -211,4 +211,20 @@ test.describe('Vectra E2E UI Tests', () => {
     await expect(checkbox).toBeVisible();
     await expect(checkbox).not.toBeChecked();
   });
+
+  test('5. Settings & Billing Page Renders', async ({ page }) => {
+    await page.goto('/app/settings');
+    
+    // Check page header
+    await expect(page.locator('header').getByText('Settings', { exact: true })).toBeVisible();
+    
+    // Check billing section elements
+    await expect(page.locator('text=Facturation & Abonnement')).toBeVisible();
+    await expect(page.locator('text=Plan Alpha Free')).toBeVisible();
+    await expect(page.locator('text=Solo Pro')).toBeVisible();
+    await expect(page.locator('text=Agency Premium')).toBeVisible();
+    
+    // Check buttons
+    await expect(page.locator('button:has-text("S\'abonner Pro")')).toBeVisible();
+  });
 });

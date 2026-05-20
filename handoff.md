@@ -120,9 +120,11 @@ Vectra includes and outlines core boilerplate configurations necessary for runni
   - `leads_imported` (triggered on CSV library dropzone parsing).
   - `messages_generated` (triggered upon outreach personalizations).
 
-### f) Billing & Subscriptions (Stripe Integration Roadmap)
-- Plans are tracked using the `plan` column on the user profile (`alpha_free` by default).
-- Future billing cycles will use **Stripe Checkout** portals linked to a webhook receiver `/api/webhooks/stripe` which will update user profiles upon subscription modifications.
+### f) Billing & Subscriptions (Stripe Integration Completed 💳)
+- **Database Schema**: Tracks subscriptions using fields on the user profile (`plan`, `credits_count`, `credits_limit`, `stripe_customer_id`, `stripe_subscription_id`).
+- **Billing Checkout**: `/api/billing/checkout` handles checkout session creation using Stripe SDK.
+- **Customer Portal**: `/api/billing/portal` generates portal sessions for users to manage cards, view invoices, or cancel plans.
+- **Webhook Sync**: `/api/webhooks/stripe` processes payment status notifications from Stripe (`checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`), dynamically adjusting customer database records and allocating appropriate credit ceilings.
 
 ---
 
@@ -141,9 +143,9 @@ To keep End-to-End tests fast and isolated from network failures (`net::ERR_NAME
 
 ---
 
-## 4. Next Steps & Phase 7 Roadmap
+## 4. Next Steps & Post-Phase 8 Roadmap
 
-For the next developer, the current priorities are:
-1. **Real Real-time Realization**: Remove mock routes in staging to connect live Supabase subscription streams.
-2. **API Integrations**: Connect actual scraping libraries to the `/api/sourcing/scrape` endpoint and agent text models to `/api/generate`.
-3. **Wrangle Scoring Engine**: Implement a background cron task that triggers a cheaper LLM model to calculate matching scores for newly imported candidates.
+With the complete SaaS stack (Sentry, PostHog, Resend, Stripe, and Secure Middleware) and Wrangle integrations fully implemented and verified, the next items on the roadmap are:
+1. **Remove Local Mocks in Production Environment**: In the deployment staging workspace, swap out mock parameters to utilize active Stripe checkout links and live email deliveries.
+2. **Production Database Seeding & Triggers**: Configure live Postgres functions and trigger sequences on Supabase for table event handling.
+3. **Advanced AI Scoring Extensions**: Refine matching prompt algorithms inside `/api/generate` to scale with specialized tech title ICPs.

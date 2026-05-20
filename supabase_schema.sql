@@ -29,6 +29,9 @@ CREATE TABLE public.profiles (
     google_connected BOOLEAN DEFAULT false,
     credits_count INTEGER DEFAULT 2000,
     credits_limit INTEGER DEFAULT 2000,
+    plan TEXT DEFAULT 'alpha_free',
+    stripe_customer_id TEXT,
+    stripe_subscription_id TEXT,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
