@@ -93,7 +93,7 @@ export default function OutreachPage() {
   const [isGenerating, setIsGenerating] = useState(false);
   const terminalEndRef = useRef<HTMLDivElement>(null);
 
-  // Phase 6 Wrangle states
+  // Phase 6 states
   const [pitchDescription, setPitchDescription] = useState('Je crée des landing pages ultra claires pour coachs et formateurs. Mes cibles sont les coachs business B2B qui vendent des programmes à plus de 1000€. L\'angle est de proposer un audit gratuit de leur landing page avec 2-3 recommandations. Je veux proposer un appel de 20 minutes pour passer en revue leurs améliorations. Je veux paraître smart mais accessible, jamais pressant.');
   const [showHidden, setShowHidden] = useState(false);
 

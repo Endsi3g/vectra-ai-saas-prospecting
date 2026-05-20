@@ -503,7 +503,7 @@ export default function SourcingPage() {
       </header>
 
       {/* Main chat window split view (History list on left / Chat feed on right) */}
-      <div className="flex-1 flex overflow-hidden bg-[#FAFAFA]">
+      <div className="flex-1 flex overflow-hidden bg-zinc-50">
         
         {/* History / Past queries left column */}
         <div className="hidden md:flex w-64 border-r border-zinc-200 bg-white flex-col shrink-0">
@@ -533,7 +533,7 @@ export default function SourcingPage() {
         </div>
 
         {/* Chat Feed Panel */}
-        <div className="flex-1 flex flex-col h-full bg-[#FAFAFA] relative overflow-hidden">
+        <div className="flex-1 flex flex-col h-full bg-zinc-50 relative overflow-hidden">
           
           {/* Scrollable Conversation Stream */}
           <div className="flex-grow overflow-y-auto p-6 space-y-6 pb-28">
@@ -602,7 +602,7 @@ export default function SourcingPage() {
                     {msg.sender === 'copilot' && msg.candidates && msg.candidates.length > 0 && (
                       <div className="mt-4 grid gap-3">
                         {msg.candidates.map((c, cIdx) => (
-                          <div key={cIdx} className="p-4 rounded-xl border border-zinc-100 bg-[#FAFAFA] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-zinc-200 transition-all">
+                          <div key={cIdx} className="p-4 rounded-xl border border-zinc-100 bg-zinc-50 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-zinc-200 transition-all">
                             
                             {/* Checkbox & Candidate Info */}
                             <div className="flex items-start gap-3 flex-1 min-w-0">
@@ -766,7 +766,7 @@ export default function SourcingPage() {
                   <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                   <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500"></span>
                 </span>
-                <span>Wrangle's Profiles</span>
+                <span>Vectra's Profiles</span>
               </div>
 
               {/* Chat Input */}

@@ -198,16 +198,16 @@ export default function PlansPage() {
           </div>
         </div>
 
-        {/* Wrangle Experts bottom banner */}
-        <div className="border border-zinc-200 rounded-2xl p-6 bg-[#FAFAFA]/50 max-w-4xl space-y-4 select-none">
+        {/* Vectra Experts bottom banner */}
+        <div className="border border-zinc-200 rounded-2xl p-6 bg-zinc-50/50 max-w-4xl space-y-4 select-none">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">
-                <span className="font-extrabold text-sm text-zinc-900">Wrangle Experts</span>
+                <span className="font-extrabold text-sm text-zinc-900">Vectra Experts</span>
                 <span className="text-[9px] bg-primary/10 text-primary font-extrabold px-1.5 py-0.5 rounded-full uppercase tracking-wider">New</span>
               </div>
               <p className="text-xs text-zinc-500 font-semibold leading-relaxed">
-                Partner with top recruiters on Wrangle to help fill your roles
+                Partner with top recruiters on Vectra to help fill your roles
               </p>
             </div>
             

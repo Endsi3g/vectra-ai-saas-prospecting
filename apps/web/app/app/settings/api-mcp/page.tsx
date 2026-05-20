@@ -44,7 +44,7 @@ export default function ApiMcpPage() {
           </div>
 
           <div className="border border-zinc-150 rounded-xl divide-y divide-zinc-100 overflow-hidden">
-            <div className="flex items-center justify-between p-4 bg-[#FAFAFA]/30 text-xs font-bold text-zinc-500">
+            <div className="flex items-center justify-between p-4 bg-zinc-50/30 text-xs font-bold text-zinc-500">
               <div className="flex items-center gap-4">
                 <span>Vectra Live Key</span>
                 <span className="font-mono text-zinc-400">

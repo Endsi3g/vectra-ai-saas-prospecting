@@ -161,7 +161,7 @@ export default function FollowUpPage() {
       </header>
 
       {/* Filters Bar */}
-      <div className="p-4 border-b border-zinc-100 bg-[#FAFAFA] flex items-center gap-4 text-sm">
+      <div className="p-4 border-b border-zinc-100 bg-zinc-50 flex items-center gap-4 text-sm">
         <div className="flex items-center gap-2 text-zinc-500 font-medium text-xs">
           <Filter className="h-4 w-4" />
           Filtres :

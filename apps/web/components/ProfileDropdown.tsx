@@ -51,13 +51,13 @@ export default function ProfileDropdown({
   const userName = userEmail ? userEmail.split('@')[0] : 'Kael Belceus';
 
   return (
-    <div 
+    <div
       ref={dropdownRef}
-      className="absolute bottom-16 left-4 w-72 rounded-2xl border border-zinc-200 bg-white/95 p-4 shadow-2xl backdrop-blur-md transition-all duration-300 z-[99] animate-fade-in"
+      className="absolute bottom-16 left-4 w-72 rounded-xl border border-border bg-card p-4 shadow-lg transition-all duration-200 z-[99] animate-scale-in"
     >
       {/* Profile Header */}
       <div className="flex items-center gap-3 border-b border-zinc-100 pb-3">
-        <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0 border border-primary/20">
+        <div className="h-9 w-9 rounded-lg bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0 border border-primary/20">
           {userInitials}
         </div>
         <div className="flex flex-col min-w-0">
@@ -75,7 +75,7 @@ export default function ProfileDropdown({
             <span className="text-[10px] font-bold uppercase tracking-wider text-zinc-400 block">Current plan</span>
             <span className="text-xs font-bold text-zinc-800">Trial (Starter)</span>
           </div>
-          <button className="bg-blue-600 hover:bg-blue-700 text-white font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg shadow-sm transition-all">
+          <button className="bg-primary hover:bg-primary/90 text-primary-foreground font-extrabold text-[10px] px-2.5 py-1.5 rounded-lg shadow-sm transition-all active:scale-[0.98]">
             Upgrade
           </button>
         </div>
@@ -131,8 +131,8 @@ export default function ProfileDropdown({
       </div>
 
       {/* Footer copyright */}
-      <div className="mt-3 text-center text-[9px] text-zinc-300 select-none">
-        Wrangle &middot; v1.0.1
+      <div className="mt-3 text-center text-[10px] text-zinc-400 select-none">
+        Vectra &middot; v1.0.1
       </div>
 
     </div>
