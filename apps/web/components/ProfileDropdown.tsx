@@ -132,7 +132,7 @@ export default function ProfileDropdown({
 
       {/* Footer copyright */}
       <div className="mt-3 text-center text-[9px] text-zinc-300 select-none">
-        Wrangle &middot; v1.0.1
+        Vectra &middot; v1.0.1
       </div>
 
     </div>

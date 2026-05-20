@@ -195,7 +195,7 @@ test.describe('Vectra E2E UI Tests', () => {
     await expect(page.locator('text=Privacy & Accessibility')).toBeVisible();
   });
 
-  test('4. Outreach Hub Wrangle Features: NLP Pitch, Copilot Alert, Shortlist/Hide Buttons, and Fit Badge', async ({ page }) => {
+  test('4. Outreach Hub Vectra Features: NLP Pitch, Copilot Alert, Shortlist/Hide Buttons, and Fit Badge', async ({ page }) => {
     await page.goto('/app/outreach');
     
     // Check campaign name loading (inside select options)

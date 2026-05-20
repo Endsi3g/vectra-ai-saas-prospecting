@@ -138,7 +138,7 @@ export default function IntegrationsPage() {
               <div className="space-y-0.5">
                 <h4 className="font-extrabold text-sm text-zinc-900">Slack Integration</h4>
                 <p className="text-xs text-zinc-500 font-semibold leading-relaxed">
-                  Run Wrangle agents from Slack.
+                  Run Vectra agents from Slack.
                 </p>
               </div>
             </div>

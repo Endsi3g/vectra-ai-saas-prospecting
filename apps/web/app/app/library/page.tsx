@@ -551,7 +551,7 @@ export default function LibraryPage() {
           {privacy === 'link_search' && (
             <div className="space-y-2 p-3 bg-zinc-50 rounded-xl border border-zinc-100 animate-in slide-in-from-top-2 duration-200">
               <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block font-sans">Direct Search Link</span>
-              <p className="text-[10px] text-zinc-500 leading-normal font-medium">Allow advisors/partners to search without logging into Wrangle.</p>
+              <p className="text-[10px] text-zinc-500 leading-normal font-medium">Allow advisors/partners to search without logging into Vectra.</p>
               <div className="flex gap-1.5 mt-2">
                 <Input 
                   value={inviteUrl} 
