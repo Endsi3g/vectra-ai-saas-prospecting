@@ -60,164 +60,120 @@ export default function AgentsPage() {
     setIsTerminalRunning(true);
     setTerminalLogs([]);
 
-    const selectedCampaignName = campaigns.find(c => c.id === selectedCampaignId)?.name || 'Campagne Directe';
+    const campaignName = campaigns.find(c => c.id === selectedCampaignId)?.name || 'Campagne Active';
 
-    const logSteps = [
-      { text: `[SYSTEM] Initializing Hermes-Agent & Apollo-Agent orchestration pipeline...`, type: 'system' as const, delay: 0 },
-      { text: `[SYSTEM] Configuration context: Campaign: "${selectedCampaignName}" | Threshold: ${matchThreshold}% | Tone: ${defaultTone} | Lang: ${outreachLanguage.toUpperCase()}`, type: 'system' as const, delay: 600 },
-      { text: `[HERMES] Activating ScrapeGraphAI crawler. Crawling target sources for SaaS and Web companies...`, type: 'hermes' as const, delay: 1500 },
-      { text: `[HERMES] Crawl analysis complete. 3 matches detected meeting your match threshold of ${matchThreshold}%.`, type: 'hermes' as const, delay: 2600 },
-      { text: `[HERMES] Discovered target profiles:\n  - Sarah Jenkins (Founder, FlowState - Toronto, Canada)\n  - Marc-André Lavoie (Founder, Vidio.io - Vancouver, Canada)\n  - Alexandre Dupont (Co-Founder, Optima-AI - Montreal, Canada)`, type: 'hermes' as const, delay: 3800 },
-      { text: `[APOLLO] Starting copywriter agent. Selecting tone strategy: "${defaultTone}" | Language: "${outreachLanguage}"...`, type: 'apollo' as const, delay: 4900 },
-      { text: `[APOLLO] Fetching content and analyzing value proposition of flowstate.co... Done.`, type: 'apollo' as const, delay: 5800 },
-      { text: `[APOLLO] Drafted hyper-personalized email audit proposal for Sarah Jenkins (CTO).`, type: 'apollo' as const, delay: 6700 },
-      { text: `[APOLLO] Saving qualified leads to campaign and generating Magic Reply drafts...`, type: 'apollo' as const, delay: 7600 },
-      { text: `[SYSTEM] Outbound synchronization complete. Deducted 15 automation credits.`, type: 'success' as const, delay: 8500 },
-      { text: `[SYSTEM] Cycle successfully finished. 3 personalized prospects queued in your Unified Inbox!`, type: 'success' as const, delay: 9400 },
-      { text: `[SYSTEM] Sleeping. Next cycle scheduled dynamically in manual or autonomous mode.`, type: 'system' as const, delay: 9800 }
-    ];
+    const addLog = (text: string, type: 'system' | 'hermes' | 'apollo' | 'success' | 'warn') => {
+      setTerminalLogs(prev => [...prev, { text, type }]);
+    };
 
-    for (const step of logSteps) {
-      await new Promise(resolve => setTimeout(resolve, step.delay - (logSteps[logSteps.indexOf(step) - 1]?.delay || 0)));
-      setTerminalLogs(prev => [...prev, { text: step.text, type: step.type }]);
-    }
-
-    // Perform database insertion of a real mock conversation at the end of the simulation!
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        // Resolve campaign
-        let campaignId = selectedCampaignId;
-        if (!campaignId || campaignId.startsWith('camp-')) {
-          const { data: dbCamps } = await supabase.from('campaigns').select('id').eq('user_id', user.id).limit(1);
-          if (dbCamps && dbCamps.length > 0 && dbCamps[0]) {
-            campaignId = dbCamps[0].id;
-          } else {
-            const { data: newCamp } = await supabase.from('campaigns').insert({
-              user_id: user.id,
-              name: 'Campaign Hermes',
-              business_type: 'SaaS',
-              offer: 'Landing Page Audit'
-            }).select('id').single();
-            if (newCamp) campaignId = newCamp.id;
-          }
-        }
+      addLog(`[SYSTEM] Démarrage du cycle Hermes + Apollo...`, 'system');
+      addLog(`[SYSTEM] Contexte : Campagne "${campaignName}" | Seuil: ${matchThreshold}% | Ton: ${defaultTone} | Langue: ${outreachLanguage.toUpperCase()}`, 'system');
 
-        // Check/Create dynamic Mailbox
-        let mailboxId = '';
-        const { data: dbMailbox } = await supabase.from('mailboxes').select('id').eq('user_id', user.id).limit(1);
-        if (dbMailbox && dbMailbox.length > 0 && dbMailbox[0]) {
-          mailboxId = dbMailbox[0].id;
+      const { data: { session } } = await supabase.auth.getSession();
+      const authHeader = session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {};
+
+      // Step 1: Run Hermes (sourcing)
+      if (hermesActive) {
+        addLog(`[HERMES] Activation du crawler ScrapeGraphAI... Recherche de prospects correspondant à votre ICP.`, 'hermes');
+
+        const hermesRes = await fetch('/api/agents/hermes', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeader },
+          body: JSON.stringify({ campaign_id: selectedCampaignId })
+        });
+
+        const hermesData = await hermesRes.json();
+
+        if (hermesRes.ok) {
+          addLog(`[HERMES] Cycle terminé. ${hermesData.leads_found || 0} prospect(s) trouvés et sauvegardés dans la campagne.`, 'hermes');
         } else {
-          const { data: newMailbox } = await supabase.from('mailboxes').insert({
-            user_id: user.id,
-            email: user.email || 'kael@vectra.ai',
-            provider: 'imap',
-            nylas_grant_id: 'mock-grant-h12',
-            status: 'connected'
-          }).select('id').single();
-          if (newMailbox) mailboxId = newMailbox.id;
+          addLog(`[HERMES] ${hermesData.error || 'Erreur lors du sourcing.'}`, 'warn');
         }
-
-        if (campaignId && mailboxId) {
-          // Check if Sarah already exists to avoid unique constraint violations
-          const { data: existingLeads } = await supabase.from('leads')
-            .select('id')
-            .eq('email', 'sarah@flowstate.co')
-            .limit(1);
-
-          if (!existingLeads || existingLeads.length === 0) {
-            // 1. Insert Lead
-            const { data: lead } = await supabase.from('leads').insert({
-              campaign_id: campaignId,
-              name: 'Sarah Jenkins',
-              company: 'FlowState',
-              website: 'https://flowstate.co',
-              email: 'sarah@flowstate.co',
-              notes: 'CTO & Founder. Target for developer workflow automation.'
-            }).select('id').single();
-
-            if (lead) {
-              // 2. Insert Conversation
-              const threadId = 'nylas-thread-' + Math.random().toString(36).substring(7);
-              const { data: conv } = await supabase.from('inbox_conversations').insert({
-                lead_id: lead.id,
-                mailbox_id: mailboxId,
-                nylas_thread_id: threadId,
-                sentiment: 'interested',
-                last_message_text: "Bonjour Kael, oui, ça m’intéresse de tester votre audit. Vous avez un créneau ce jeudi ?"
-              }).select('id').single();
-
-              if (conv) {
-                // 3. Insert Outbound (User message)
-                await supabase.from('inbox_messages').insert({
-                  conversation_id: conv.id,
-                  nylas_message_id: 'msg-out-' + Math.random().toString(36).substring(7),
-                  sender_type: 'user',
-                  subject: 'Audit de flowstate.co',
-                  snippet: 'Bonjour Sarah, j’ai analysé flowstate.co...',
-                  body: "Bonjour Sarah,\n\nJ'ai analysé flowstate.co et j'ai adoré vos flux de recrutement automatique. Cependant, j'ai remarqué quelques frictions sur votre page de tarification qui pourraient vous faire perdre des conversions.\n\nJe vous ai préparé un audit vidéo rapide de 3 minutes avec 3 conseils concrets de design. Êtes-vous ouverte à ce que je vous l'envoie ?\n\nCordialement,\nKael"
-                });
-
-                // 4. Insert Inbound (Prospect message with Magic Reply Draft!)
-                await supabase.from('inbox_messages').insert({
-                  conversation_id: conv.id,
-                  nylas_message_id: 'msg-in-' + Math.random().toString(36).substring(7),
-                  sender_type: 'prospect',
-                  subject: 'Re: Audit de flowstate.co',
-                  snippet: 'Bonjour Kael, oui, ça m’intéresse...',
-                  body: "Bonjour Kael, merci pour l’intérêt porté à FlowState ! Oui, ça m’intéresse carrément de tester votre audit pour améliorer nos conversions. Vous auriez un créneau ce jeudi après-midi pour en parler en direct ?",
-                  magic_reply_draft: `Bonjour Sarah,\n\nMerci pour votre retour ! C'est un plaisir d'échanger avec vous.\n\nCe jeudi après-midi me convient parfaitement. Je vous propose un appel rapide de 15 minutes pour vous partager mes recommandations en direct.\n\nVous pouvez choisir le créneau qui vous convient le mieux directement sur mon Calendly : https://calendly.com/kael-vectra/15min\n\nAu plaisir d'en discuter,\nKael`
-                });
-              }
-            }
-          }
-        }
+      } else {
+        addLog(`[HERMES] Agent désactivé — sourcing ignoré.`, 'warn');
       }
-    } catch (dbErr) {
-      console.warn('Simulated DB writing failed (normal if offline/unauthenticated):', dbErr);
-    }
 
-    setIsTerminalRunning(false);
+      // Step 2: Run Apollo (message generation)
+      if (apolloActive) {
+        addLog(`[APOLLO] Activation du générateur de messages... Recherche de leads sans outreach.`, 'apollo');
+
+        const apolloRes = await fetch('/api/agents/apollo', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', ...authHeader },
+          body: JSON.stringify({ campaign_id: selectedCampaignId })
+        });
+
+        const apolloData = await apolloRes.json();
+
+        if (apolloRes.ok) {
+          addLog(`[APOLLO] ${apolloData.messages_generated || 0} message(s) générés pour ${apolloData.leads_processed || 0} leads.`, 'apollo');
+        } else {
+          addLog(`[APOLLO] ${apolloData.error || 'Erreur lors de la génération.'}`, 'warn');
+        }
+      } else {
+        addLog(`[APOLLO] Agent désactivé — génération de messages ignorée.`, 'warn');
+      }
+
+      addLog(`[SYSTEM] Cycle complet. Consultez vos campagnes et l'outreach pour voir les résultats.`, 'success');
+    } catch (err) {
+      addLog(`[SYSTEM] Erreur inattendue lors du cycle. Veuillez réessayer.`, 'warn');
+      console.error('[MANUAL CYCLE] Error:', err);
+    } finally {
+      setIsTerminalRunning(false);
+    }
   };
 
   useEffect(() => {
-    const fetchCampaignsList = async () => {
+    const fetchInitialData = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data, error } = await supabase
+          // Load campaigns
+          const { data: campData } = await supabase
             .from('campaigns')
             .select('id, name')
             .eq('user_id', user.id);
-          
-          if (!error && data && data.length > 0 && data[0]) {
-            setCampaigns(data);
-            setSelectedCampaignId(data[0].id);
-          } else {
-            // Mock fallback if empty or error
-            setCampaigns([
-              { id: 'camp-1', name: 'Audit Landing Page - Coachs Business B2B' },
-              { id: 'camp-2', name: 'Modernisation Web - Agence Design' }
-            ]);
-            setSelectedCampaignId('camp-1');
+
+          if (campData && campData.length > 0 && campData[0]) {
+            setCampaigns(campData);
+            setSelectedCampaignId(campData[0].id);
+          }
+
+          // Load saved agent config from profile
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('agent_config')
+            .eq('id', user.id)
+            .single();
+
+          if (profile?.agent_config && typeof profile.agent_config === 'object') {
+            const cfg = profile.agent_config as Record<string, any>;
+            if (cfg.hermes_active !== undefined) setHermesActive(Boolean(cfg.hermes_active));
+            if (cfg.apollo_active !== undefined) setApolloActive(Boolean(cfg.apollo_active));
+            if (cfg.athena_active !== undefined) setAthenaActive(Boolean(cfg.athena_active));
+            if (cfg.match_threshold !== undefined) setMatchThreshold(Number(cfg.match_threshold));
+            if (cfg.max_leads_limit !== undefined) setMaxLeadsLimit(Number(cfg.max_leads_limit));
+            if (cfg.frequency) setFrequency(cfg.frequency as 'daily' | 'weekly' | 'manual');
+            if (cfg.outreach_language) setOutreachLanguage(cfg.outreach_language as 'fr' | 'en' | 'bilingual');
+            if (cfg.default_tone) setDefaultTone(cfg.default_tone as 'casual' | 'professional' | 'direct');
           }
         }
       } catch (err) {
-        console.error('Error fetching campaigns list in agents page:', err);
+        console.error('Error loading agents config:', err);
       } finally {
         setLoadingCampaigns(false);
       }
     };
 
-    fetchCampaignsList();
+    fetchInitialData();
   }, []);
 
-  const handleSaveConfig = () => {
+  const handleSaveConfig = async () => {
     setIsSaving(true);
     setSaveSuccess(false);
 
-    captureAnalyticsEvent('agents_config_saved', {
+    const config = {
       hermes_active: hermesActive,
       apollo_active: apolloActive,
       athena_active: athenaActive,
@@ -227,13 +183,25 @@ export default function AgentsPage() {
       outreach_language: outreachLanguage,
       default_tone: defaultTone,
       campaign_id: selectedCampaignId
-    });
+    };
 
-    setTimeout(() => {
-      setIsSaving(false);
-      setSaveSuccess(true);
-      setTimeout(() => setSaveSuccess(false), 3000);
-    }, 800);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('profiles')
+          .update({ agent_config: config })
+          .eq('id', user.id);
+      }
+    } catch (err) {
+      console.error('Error saving agents config:', err);
+    }
+
+    captureAnalyticsEvent('agents_config_saved', config);
+
+    setIsSaving(false);
+    setSaveSuccess(true);
+    setTimeout(() => setSaveSuccess(false), 3000);
   };
 
   return (
