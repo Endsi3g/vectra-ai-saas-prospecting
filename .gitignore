@@ -38,3 +38,7 @@ npm-debug.log*
 # Misc
 .DS_Store
 *.pem
+
+# Agent Skills
+.agents/
+skills-lock.json

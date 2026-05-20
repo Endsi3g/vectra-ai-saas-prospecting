@@ -1,6 +1,6 @@
 # Vectra Developer Handoff Guide 📋
 
-This document outlines technical specifications, database schemas, mock seeding, and E2E testing strategies to facilitate seamless development continuity.
+This document outlines technical specifications, database schemas, mock seeding, SaaS core infrastructure, and E2E testing strategies to facilitate seamless development continuity.
 
 ---
 
@@ -20,6 +20,7 @@ create table public.profiles (
   credits_count integer default 1000,
   credits_limit integer default 1000,
   tour_completed boolean default false,
+  plan text default 'alpha_free', -- 'alpha_free', 'solo', 'agency'
   created_at timestamp with time zone default timezone('utc'::text, now()) not null
 );
 ```
@@ -75,7 +76,57 @@ create table public.messages (
 
 ---
 
-## 2. Playwright E2E Mock Seeding Strategy
+## 2. Essential SaaS Infrastructure & "Boring Briques" 🧱
+
+Vectra includes and outlines core boilerplate configurations necessary for running a complete production-grade SaaS product:
+
+### a) Deployment & Hosting
+- **Frontend / Next.js Server**: Hosted on **Vercel** with integrated continuous deployment (CI/CD) hooked to the main GitHub branch.
+- **Database & Security**: Postgres DB managed in **Supabase**. Row Level Security (RLS) policies are active on `campaigns`, `leads`, and `messages` tables to ensure users can only query and mutate their own data records:
+  ```sql
+  alter table public.campaigns enable row level security;
+  create policy "Users can only access their own campaigns" on public.campaigns
+    for all using (auth.uid() = user_id);
+  ```
+
+### b) User Authentication & Route Middleware
+- Powered by **Supabase Auth** (Email + password with optional magic links support).
+- **Protected Routes**: Next.js route middleware (`lib/middleware.ts`) protects all routes under `/app` and `/api/generate` by redirecting unauthenticated requests back to `/auth/sign-in`.
+
+### c) Transactional Email Delivery (Resend)
+- **Resend** is configured as the transaction email engine (welcome notifications, password resets).
+- **Setup**: `resend` package installed. Core email utility is structured inside `lib/email.ts`:
+  ```typescript
+  import { Resend } from 'resend';
+  const resend = new Resend(process.env.RESEND_API_KEY);
+  
+  export async function sendWelcomeEmail(to: string, name: string) {
+    await resend.emails.send({
+      from: 'Vectra <welcome@vectra.ai>',
+      to,
+      subject: 'Bienvenue sur Vectra !',
+      html: `<p>Bonjour ${name}, votre espace de sourcing IA est prêt.</p>`
+    });
+  }
+  ```
+
+### d) Logs, Exception Monitoring & Uptime
+- **Sentry Integration**: Exception tracking is configured on both the client (React pages) and server-side routes (`/api/generate`) via Sentry Next.js configuration bindings (`sentry.client.config.ts` and `sentry.server.config.ts`).
+- **Health Checks & Uptime**: A dedicated health check endpoint `/api/health` returns status code `200 OK` when database latency is nominal. Checked at 1-minute intervals via **UptimeRobot** or **Better Stack** to ensure platform availability.
+
+### e) Product Analytics (PostHog)
+- Client-side event tracking tracks customer feature engagement metrics:
+  - `campaign_created` (triggered on campaigns panel additions).
+  - `leads_imported` (triggered on CSV library dropzone parsing).
+  - `messages_generated` (triggered upon outreach personalizations).
+
+### f) Billing & Subscriptions (Stripe Integration Roadmap)
+- Plans are tracked using the `plan` column on the user profile (`alpha_free` by default).
+- Future billing cycles will use **Stripe Checkout** portals linked to a webhook receiver `/api/webhooks/stripe` which will update user profiles upon subscription modifications.
+
+---
+
+## 3. Playwright E2E Mock Seeding Strategy
 
 To keep End-to-End tests fast and isolated from network failures (`net::ERR_NAME_NOT_RESOLVED`), all tests in [vectra.spec.ts](file:///c:/Vectra -AI SaaS Prospecting/vectra/apps/web/tests/vectra.spec.ts) use structured mocks:
 
@@ -90,7 +141,7 @@ To keep End-to-End tests fast and isolated from network failures (`net::ERR_NAME
 
 ---
 
-## 3. Next Steps & Phase 7 Roadmap
+## 4. Next Steps & Phase 7 Roadmap
 
 For the next developer, the current priorities are:
 1. **Real Real-time Realization**: Remove mock routes in staging to connect live Supabase subscription streams.
