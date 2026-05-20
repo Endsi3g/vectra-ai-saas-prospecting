@@ -131,6 +131,22 @@ test.beforeEach(async ({ page, context }) => {
       ]),
     });
   });
+
+  // Mock follow_ups queries
+  await page.route('**/rest/v1/follow_ups*', async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify([
+        {
+          lead_id: 'lead-1',
+          status: 'message_envoye',
+          follow_up_date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
+          notes: 'A relancer !'
+        },
+      ]),
+    });
+  });
 });
 
 test.describe('Vectra E2E UI Tests', () => {
@@ -286,9 +302,13 @@ test.describe('Vectra E2E UI Tests', () => {
     await expect(page.locator('text=Hermes (Sourcing Automatique)')).toBeVisible();
     await expect(page.locator('text=Apollo (Analyse & Personnalisation)')).toBeVisible();
     await expect(page.locator('text=Score de Match Minimum')).toBeVisible();
-    // Verify that NO terminal/log console is present on page
-    await expect(page.locator('text=Console Terminal')).not.toBeVisible();
-    await expect(page.locator('text=Crawling, Scoring, Draft generation')).not.toBeVisible();
+
+    // Verify developer terminal is present on page
+    await expect(page.locator('text=Developer Terminal & Agent Logs')).toBeVisible();
+    
+    // Click terminal toggle to open it
+    await page.click('text=Developer Terminal & Agent Logs');
+    await expect(page.locator('text=Developer Terminal Initialized')).toBeVisible();
 
     // Select a campaign using the first select element
     await page.locator('select').first().selectOption({ index: 0 });
@@ -296,6 +316,14 @@ test.describe('Vectra E2E UI Tests', () => {
     // Save configuration
     await page.click('button:has-text("Enregistrer")');
     await expect(page.locator('text=Configuration enregistrée !')).toBeVisible();
+
+    // Run simulated cycle
+    await page.locator('button:has-text("Lancer un Cycle")').first().click();
+    await expect(page.locator('text=Running Sourcing & Analysis Orchestrator')).toBeVisible();
+    
+    // Allow typewriter simulation to progress
+    await page.waitForTimeout(800);
+    await expect(page.locator('text=Initializing Hermes-Agent')).toBeVisible();
 
     // 3. Check Analytics Page and Interactions
     await page.goto('/app/analytics');
@@ -305,8 +333,90 @@ test.describe('Vectra E2E UI Tests', () => {
     await expect(page.locator('text=Leads Importés')).toBeVisible();
     await expect(page.locator('text=Appels Planifiés').first()).toBeVisible();
 
+    // Toggle Timeframe filters
+    await page.click('button:has-text("30 Jours")');
+    await page.waitForTimeout(200);
+
+    // Toggle Campaign Selector filter
+    await page.locator('select').first().selectOption({ index: 1 });
+    await page.waitForTimeout(200);
+
     // Click refresh and verify it returns to nominal idle state
     await page.click('button:has-text("Actualiser")');
     await expect(page.locator('button:has-text("Actualiser")')).toBeVisible();
   });
+
+  test('7. Follow-up Tracker Page', async ({ page }) => {
+    // Navigate to the new Follow-up page
+    await page.goto('/app/followup');
+    
+    // Check header
+    await expect(page.locator('header').getByText('Follow-up Tracker')).toBeVisible();
+    await expect(page.locator('button:has-text("Ajouter un lead")')).toBeVisible();
+    
+    // Check filters are present
+    await expect(page.locator('text=Filtres :')).toBeVisible();
+    
+    // Wait for data to load (using the mocked lead data from beforeEach)
+    await expect(page.locator('text=Jean Dupont')).toBeVisible();
+    await expect(page.locator('text=SaaS Inc')).toBeVisible();
+    
+    // Check that overdue badge shows up (mocked follow_ups has an overdue date for lead-1)
+    await expect(page.locator('text=En retard').first()).toBeVisible();
+    
+    // Change a select status
+    // Select the first status select element
+    const statusSelect = page.locator('table tbody tr:first-child td select').first();
+    await statusSelect.selectOption('deal_conclu');
+    
+    // The visual color of the select should change to the emerald class (we can check if deal_conclu is selected)
+    await expect(statusSelect).toHaveValue('deal_conclu');
+  });
+
+  test('8. Cold Calling Simulator Page', async ({ page }) => {
+    // Navigate to the Cold Call Simulator page
+    await page.goto('/app/training');
+
+    // Check header
+    await expect(page.locator('header').getByText('Cold Call Simulator')).toBeVisible();
+    await expect(page.locator('h1:has-text("Simulateur d\'Appel (IA)")')).toBeVisible();
+
+    // Check that we have a persona selection card
+    await expect(page.locator('text=Le CEO Pressé')).toBeVisible();
+    await expect(page.locator('text=Le CTO Sceptique')).toBeVisible();
+
+    // Select "Le CEO Pressé" (which is selected by default, but let's click it)
+    await page.click('text=Le CEO Pressé');
+
+    // Launch simulation
+    await page.click('button:has-text("Lancer la Simulation")');
+
+    // Verify simulation starts
+    await expect(page.locator('text=Appel en cours...')).toBeVisible();
+    await expect(page.locator('text=Marc (CEO)')).toBeVisible();
+
+    // The agent typing state should be visible initially
+    // Since agent typing has a 1.5s timeout, we can wait for the first message.
+    await page.waitForTimeout(2000);
+    await expect(page.locator('text=Oui, bonjour. Je suis très occupé, c\'est à quel sujet ?')).toBeVisible();
+
+    // Type a response in the input
+    const input = page.locator('input[placeholder*="Tapez votre réponse"]');
+    await expect(input).toBeVisible();
+    await input.fill('Bonjour Marc, je vous contacte pour doubler vos rendez-vous qualifiés.');
+
+    // Click send
+    await page.click('form button[type="submit"]');
+
+    // Verify user message appears
+    await expect(page.locator('text=Bonjour Marc, je vous contacte pour doubler vos rendez-vous qualifiés.')).toBeVisible();
+
+    // Agent response starts typing and then appears
+    await page.waitForTimeout(2500);
+    
+    // Check that some response from agent CEO pressé is visible
+    // First response for CEO busy is: 'Allez droit au but, je rentre en réunion dans 2 minutes. Quelle est votre proposition de valeur ?'
+    await expect(page.locator('text=Allez droit au but, je rentre en réunion dans 2 minutes.')).toBeVisible();
+  });
 });
+

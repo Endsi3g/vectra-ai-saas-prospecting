@@ -154,3 +154,80 @@ CREATE POLICY "Users can manage messages of their own leads"
               AND public.campaigns.user_id = auth.uid()
         )
     );
+
+
+-- Create mailboxes table (Phase 11)
+CREATE TABLE public.mailboxes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    provider TEXT NOT NULL, -- 'gmail', 'outlook', 'imap'
+    nylas_grant_id TEXT NOT NULL, -- Nylas Access Grant ID
+    status TEXT DEFAULT 'connected' NOT NULL, -- 'connected', 'error'
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+-- Enable RLS on mailboxes
+ALTER TABLE public.mailboxes ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage their own mailboxes"
+    ON public.mailboxes
+    FOR ALL
+    USING (auth.uid() = user_id);
+
+
+-- Create inbox_conversations table (Phase 11)
+CREATE TABLE public.inbox_conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id UUID REFERENCES public.leads(id) ON DELETE CASCADE NOT NULL,
+    mailbox_id UUID REFERENCES public.mailboxes(id) ON DELETE CASCADE NOT NULL,
+    nylas_thread_id TEXT NOT NULL UNIQUE,
+    sentiment TEXT DEFAULT 'interested' CHECK (sentiment IN ('interested', 'objection', 'unsubscribe')) NOT NULL,
+    last_message_text TEXT,
+    updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+-- Enable RLS on inbox_conversations
+ALTER TABLE public.inbox_conversations ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage conversations of their own leads"
+    ON public.inbox_conversations
+    FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.leads
+            JOIN public.campaigns ON public.campaigns.id = public.leads.campaign_id
+            WHERE public.leads.id = public.inbox_conversations.lead_id
+              AND public.campaigns.user_id = auth.uid()
+        )
+    );
+
+
+-- Create inbox_messages table (Phase 11)
+CREATE TABLE public.inbox_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID REFERENCES public.inbox_conversations(id) ON DELETE CASCADE NOT NULL,
+    nylas_message_id TEXT NOT NULL UNIQUE,
+    sender_type TEXT CHECK (sender_type IN ('user', 'prospect')) NOT NULL,
+    body TEXT NOT NULL,
+    snippet TEXT,
+    subject TEXT,
+    magic_reply_draft TEXT, -- Pre-generated IA magic reply
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+
+-- Enable RLS on inbox_messages
+ALTER TABLE public.inbox_messages ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Users can manage messages of their own conversations"
+    ON public.inbox_messages
+    FOR ALL
+    USING (
+        EXISTS (
+            SELECT 1 FROM public.inbox_conversations
+            JOIN public.leads ON public.leads.id = public.inbox_conversations.lead_id
+            JOIN public.campaigns ON public.campaigns.id = public.leads.campaign_id
+            WHERE public.inbox_conversations.id = public.inbox_messages.conversation_id
+              AND public.campaigns.user_id = auth.uid()
+        )
+    );

@@ -18,10 +18,13 @@ import {
   BrainCircuit, 
   ExternalLink,
   ChevronDown,
-  Lock
+  Lock,
+  X,
+  RefreshCw
 } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import { captureAnalyticsEvent } from '@/lib/analytics';
+import { saveLead, deductCredits } from '@/lib/db-fallback';
 
 interface Candidate {
   name: string;
@@ -32,6 +35,7 @@ interface Candidate {
   website: string;
   saved: boolean;
   email?: string;
+  match_score?: number;
 }
 
 export default function SourcingPage() {
@@ -56,7 +60,8 @@ export default function SourcingPage() {
           summary: 'B2B Sales Automation Platform. Équipe de 12 personnes. Récemment mentionné dans Techvibes.',
           website: 'leadflowai.com',
           saved: false,
-          email: 'marc@leadflowai.com'
+          email: 'marc@leadflowai.com',
+          match_score: 95
         },
         {
           name: 'Sarah Jenkins',
@@ -66,7 +71,8 @@ export default function SourcingPage() {
           summary: 'Automated Hiring Workflows for Startups. Équipe de 8 personnes. Croissance mensuelle de 15%.',
           website: 'techrecruit.io',
           saved: true,
-          email: 'sarah@techrecruit.io'
+          email: 'sarah@techrecruit.io',
+          match_score: 87
         },
         {
           name: 'Alexandre Dupont',
@@ -76,7 +82,8 @@ export default function SourcingPage() {
           summary: 'Software engineering intelligence tool. Équipe de 15 personnes. Levée de fonds récente en Pre-Seed.',
           website: 'devpulse.co',
           saved: false,
-          email: 'alex@devpulse.co'
+          email: 'alex@devpulse.co',
+          match_score: 82
         }
       ] as Candidate[]
     }
@@ -84,17 +91,121 @@ export default function SourcingPage() {
 
   const [savingIndex, setSavingIndex] = useState<number | null>(null);
   const [isSearching, setIsSearching] = useState(false);
+  const [selectedCandidates, setSelectedCandidates] = useState<string[]>([]);
 
-  const handleSend = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!query.trim() || isSearching) return;
+  const toggleSelectCandidate = (key: string) => {
+    setSelectedCandidates(prev => 
+      prev.includes(key) ? prev.filter(k => k !== key) : [...prev, key]
+    );
+  };
 
-    const queryText = query;
-    setQuery('');
+  const handleBulkAction = async (action: 'shortlist' | 'hide') => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('Veuillez vous connecter pour qualifier ces prospects.');
+        return;
+      }
+
+      let campaignId = '';
+      const { data: campaigns } = await supabase
+        .from('campaigns')
+        .select('id')
+        .eq('user_id', user.id)
+        .limit(1);
+
+      if (campaigns && campaigns.length > 0 && campaigns[0]) {
+        campaignId = campaigns[0].id;
+      } else {
+        const { data: newCampaign } = await supabase
+          .from('campaigns')
+          .insert({
+            user_id: user.id,
+            name: 'Sourcing Campaign',
+            business_type: 'SaaS',
+            offer: 'Audit & Analysis'
+          })
+          .select('id')
+          .single();
+        if (newCampaign) campaignId = newCampaign.id;
+      }
+
+      if (!campaignId) return;
+
+      const targets = selectedCandidates.map(key => {
+        const parts = key.split('-');
+        const mIdx = parseInt(parts[0] || '0', 10);
+        const cIdx = parseInt(parts[1] || '0', 10);
+        return { mIdx, cIdx, candidate: messages[mIdx]?.candidates?.[cIdx] };
+      }).filter(t => t.candidate) as { mIdx: number; cIdx: number; candidate: Candidate }[];
+
+      for (const t of targets) {
+        const { data: savedLead, error: leadError } = await supabase
+          .from('leads')
+          .insert({
+            campaign_id: campaignId,
+            name: t.candidate.name,
+            company: t.candidate.company,
+            website: `https://${t.candidate.website}`,
+            email: t.candidate.email || `contact@${t.candidate.website}`,
+            notes: t.candidate.summary
+          })
+          .select('id')
+          .single();
+
+        if (leadError) continue;
+
+        if (savedLead) {
+          await supabase
+            .from('messages')
+            .insert({
+              lead_id: savedLead.id,
+              email_subject: `Proposition de design pour ${t.candidate.company}`,
+              email_body: `Bonjour ${t.candidate.name.split(' ')[0]}, j'ai analysé votre site ${t.candidate.website}...`,
+              linkedin_message: `Salut ${t.candidate.name.split(' ')[0]}, top votre SaaS...`,
+              personalization_score: 95,
+              status: action === 'shortlist' ? 'approved' : 'draft'
+            });
+        }
+      }
+
+      const totalCost = targets.length * 5;
+      const updatedCredits = await deductCredits(totalCost);
+      window.dispatchEvent(new CustomEvent('vectra-credits-updated', { detail: { credits: updatedCredits } }));
+      
+      // Force refresh of layout lists if needed
+      window.dispatchEvent(new Event('vectra-collections-updated'));
+
+      setMessages(prev => prev.map((m, mIdx) => {
+        if (m.candidates) {
+          const newCandidates = m.candidates.map((c, cIdx) => {
+            const isSelected = selectedCandidates.includes(`${mIdx}-${cIdx}`);
+            if (isSelected) {
+              return { ...c, saved: true };
+            }
+            return c;
+          });
+          return { ...m, candidates: newCandidates };
+        }
+        return m;
+      }));
+
+      setSelectedCandidates([]);
+    } catch (err) {
+      console.error('Error during bulk action:', err);
+    }
+  };
+
+  const executeSearch = async (queryText: string, isLoadMore: boolean = false) => {
+    if (!queryText.trim() || isSearching) return;
+    
     setIsSearching(true);
-    captureAnalyticsEvent('sourcing_query_run', { query: queryText });
+    if (!isLoadMore) setQuery('');
+    captureAnalyticsEvent(isLoadMore ? 'sourcing_load_more' : 'sourcing_query_run', { query: queryText });
 
-    const userMsg = { sender: 'user', text: queryText };
+    const userMsg = isLoadMore 
+      ? { sender: 'user', text: `Recherche approfondie : ${queryText}` } 
+      : { sender: 'user', text: queryText };
     const copilotPlaceholder = {
       sender: 'copilot',
       thinkingTime: '0.0s',
@@ -107,13 +218,14 @@ export default function SourcingPage() {
 
     try {
       const { data: { session } } = await supabase.auth.getSession();
+      const payload = isLoadMore ? { query: queryText, page: 2 } : { query: queryText };
       const response = await fetch('/api/sourcing/agent', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
         },
-        body: JSON.stringify({ query: queryText })
+        body: JSON.stringify(payload)
       });
 
       if (!response.body) {
@@ -182,7 +294,8 @@ export default function SourcingPage() {
                     summary: l.notes || '',
                     website: l.website.replace(/^https?:\/\//, ''),
                     saved: false,
-                    email: l.email
+                    email: l.email,
+                    match_score: l.match_score || Math.floor(Math.random() * 20 + 75)
                   }));
                   setMessages(prev => {
                     const newMsgs = [...prev];
@@ -205,6 +318,19 @@ export default function SourcingPage() {
       console.error('Failed to parse agent stream:', err);
     } finally {
       setIsSearching(false);
+    }
+  };
+
+  const handleSend = (e: React.FormEvent) => {
+    e.preventDefault();
+    executeSearch(query);
+  };
+
+  const handleLoadMore = () => {
+    // Find the last user query
+    const lastUserMsg = [...messages].reverse().find(m => m.sender === 'user' && !m.text.startsWith('Recherche approfondie :'));
+    if (lastUserMsg) {
+      executeSearch(lastUserMsg.text, true);
     }
   };
 
@@ -253,36 +379,23 @@ export default function SourcingPage() {
         throw new Error('Could not resolve campaign.');
       }
 
-      // Save lead
-      const { data: savedLead, error: leadError } = await supabase
-        .from('leads')
-        .insert({
-          campaign_id: campaignId,
-          name: candidate.name,
-          company: candidate.company,
-          website: `https://${candidate.website}`,
-          email: candidate.email || `contact@${candidate.website}`,
-          notes: candidate.summary
-        })
-        .select('id')
-        .single();
-
-      if (leadError) throw leadError;
+      // Save lead using our hybrid helper
+      await saveLead({
+        name: candidate.name,
+        company: candidate.company,
+        website: `https://${candidate.website}`,
+        email: candidate.email || `contact@${candidate.website}`,
+        notes: candidate.summary,
+        role: candidate.role,
+        location: candidate.location
+      });
 
       // Deduct 5 credits from profile
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('credits_count')
-        .eq('id', user.id)
-        .single();
+      const updatedCredits = await deductCredits(5);
+      window.dispatchEvent(new CustomEvent('vectra-credits-updated', { detail: { credits: updatedCredits } }));
       
-      if (profile) {
-        const newCount = Math.max(0, (profile.credits_count || 2000) - 5);
-        await supabase
-          .from('profiles')
-          .update({ credits_count: newCount })
-          .eq('id', user.id);
-      }
+      // Sync sidebar
+      window.dispatchEvent(new Event('vectra-collections-updated'));
 
       // Update UI state
       setMessages(prev => prev.map((m, mIdx2) => {
@@ -410,29 +523,63 @@ export default function SourcingPage() {
                         {msg.candidates.map((c, cIdx) => (
                           <div key={cIdx} className="p-4 rounded-xl border border-zinc-100 bg-[#FAFAFA] flex flex-col md:flex-row justify-between items-start md:items-center gap-4 hover:border-zinc-200 transition-all">
                             
-                            {/* Candidate Info */}
-                            <div className="space-y-1">
-                              <div className="flex items-center gap-2">
-                                <span className="font-bold text-xs text-zinc-800">{c.name}</span>
-                                <Badge variant="secondary" className="text-[9px] bg-zinc-200/50 text-zinc-600 border-none px-1.5 h-4">
-                                  {c.location}
-                                </Badge>
+                            {/* Checkbox & Candidate Info */}
+                            <div className="flex items-start gap-3 flex-1 min-w-0">
+                              {!c.saved && (
+                                <input
+                                  type="checkbox"
+                                  checked={selectedCandidates.includes(`${mIdx}-${cIdx}`)}
+                                  onChange={() => toggleSelectCandidate(`${mIdx}-${cIdx}`)}
+                                  className="h-4 w-4 rounded border-zinc-300 text-primary focus:ring-primary cursor-pointer mt-1 shrink-0"
+                                />
+                              )}
+                              
+                              <div className="space-y-1 flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="font-bold text-xs text-zinc-800">{c.name}</span>
+                                  {c.match_score !== undefined && (
+                                    <div className="flex items-center gap-1.5 ml-1">
+                                      <div className="relative h-5 w-5 flex items-center justify-center bg-zinc-50 rounded-full border border-zinc-100">
+                                        <svg className="h-4 w-4 transform -rotate-90" viewBox="0 0 20 20">
+                                          <circle className="text-zinc-200" strokeWidth="2" stroke="currentColor" fill="transparent" r="8" cx="10" cy="10" />
+                                          <circle 
+                                            className={`${c.match_score >= 90 ? 'text-emerald-500' : c.match_score >= 80 ? 'text-amber-500' : 'text-blue-500'}`} 
+                                            strokeWidth="2" 
+                                            strokeDasharray={`${(c.match_score / 100) * 50.2} 50.2`} 
+                                            strokeLinecap="round" 
+                                            stroke="currentColor" 
+                                            fill="transparent" 
+                                            r="8" 
+                                            cx="10" 
+                                            cy="10" 
+                                          />
+                                        </svg>
+                                      </div>
+                                      <span className={`text-[10px] font-bold ${c.match_score >= 90 ? 'text-emerald-600' : c.match_score >= 80 ? 'text-amber-600' : 'text-blue-600'}`}>
+                                        {c.match_score}% Match
+                                      </span>
+                                    </div>
+                                  )}
+                                  <Badge variant="secondary" className="text-[9px] bg-zinc-200/50 text-zinc-600 border-none px-1.5 h-4 ml-auto sm:ml-0">
+                                    {c.location}
+                                  </Badge>
+                                </div>
+                                <span className="text-[11px] font-semibold text-zinc-500 block">
+                                  {c.role} @ <span className="text-zinc-700">{c.company}</span>
+                                </span>
+                                <p className="text-[11px] text-zinc-400 mt-1 max-w-[480px]">
+                                  {c.summary}
+                                </p>
+                                <a 
+                                  href={`https://${c.website}`}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center text-[10px] text-primary hover:underline gap-0.5 mt-1 select-none font-bold"
+                                >
+                                  {c.website}
+                                  <ExternalLink className="h-2.5 w-2.5" />
+                                </a>
                               </div>
-                              <span className="text-[11px] font-semibold text-zinc-500 block">
-                                {c.role} @ <span className="text-zinc-700">{c.company}</span>
-                              </span>
-                              <p className="text-[11px] text-zinc-400 mt-1 max-w-[480px]">
-                                {c.summary}
-                              </p>
-                              <a 
-                                href={`https://${c.website}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center text-[10px] text-primary hover:underline gap-0.5 mt-1 select-none font-bold"
-                              >
-                                {c.website}
-                                <ExternalLink className="h-2.5 w-2.5" />
-                              </a>
                             </div>
 
                             {/* Candidate Action */}
@@ -465,6 +612,19 @@ export default function SourcingPage() {
                         ))}
                       </div>
                     )}
+                    
+                    {/* Load More Button (only on the last copilot message) */}
+                    {msg.sender === 'copilot' && msg.candidates && msg.candidates.length > 0 && mIdx === messages.length - 1 && (
+                      <Button 
+                        variant="ghost" 
+                        className="w-full mt-4 text-primary font-semibold text-xs border border-dashed border-zinc-200 hover:border-primary/50 hover:bg-zinc-50"
+                        onClick={handleLoadMore}
+                        disabled={isSearching}
+                      >
+                        <RefreshCw className={`h-3.5 w-3.5 mr-2 ${isSearching ? 'animate-spin' : ''}`} />
+                        {isSearching ? 'Chargement...' : 'Charger plus de profils'}
+                      </Button>
+                    )}
 
                   </div>
 
@@ -480,6 +640,40 @@ export default function SourcingPage() {
               </div>
             ))}
           </div>
+
+          {/* Floating Action Bar */}
+          {selectedCandidates.length > 0 && (
+            <div className="absolute bottom-28 left-1/2 transform -translate-x-1/2 z-40 bg-zinc-950 text-white rounded-full px-5 py-3 shadow-2xl border border-zinc-800 flex items-center gap-4 animate-in fade-in slide-in-from-bottom-5 duration-300 pointer-events-auto">
+              <span className="text-[11px] font-bold text-zinc-300 shrink-0">
+                {selectedCandidates.length} candidat{selectedCandidates.length > 1 ? 's' : ''} sélectionné{selectedCandidates.length > 1 ? 's' : ''}
+              </span>
+              <div className="h-4 w-px bg-zinc-800 shrink-0" />
+              <div className="flex items-center gap-1.5 shrink-0">
+                <Button 
+                  size="sm" 
+                  onClick={() => handleBulkAction('shortlist')}
+                  className="h-7 text-[10px] font-extrabold bg-emerald-600 hover:bg-emerald-700 text-white border-none gap-1"
+                >
+                  <Check className="h-3 w-3" />
+                  Shortlist
+                </Button>
+                <Button 
+                  size="sm" 
+                  onClick={() => handleBulkAction('hide')}
+                  className="h-7 text-[10px] font-extrabold bg-zinc-800 hover:bg-zinc-750 text-zinc-300 border border-zinc-800 gap-1"
+                >
+                  <X className="h-3 w-3" />
+                  Masquer
+                </Button>
+                <button 
+                  onClick={() => setSelectedCandidates([])}
+                  className="text-[10px] font-bold text-zinc-400 hover:text-white px-2 py-1"
+                >
+                  Annuler
+                </button>
+              </div>
+            </div>
+          )}
 
           {/* Fixed bottom chat bar panel */}
           <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-[#FAFAFA] via-[#FAFAFA]/95 to-transparent p-6 pt-10 select-none pointer-events-none">

@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@workspace/ui/components/button';
 import { supabase } from '@/lib/supabase';
+import { getCollections, createCollection, getCredits } from '@/lib/db-fallback';
 import { 
   Sparkles, 
   FolderOpen, 
@@ -32,7 +33,9 @@ import {
   Gift,
   Terminal,
   MessageSquare,
-  TrendingUp
+  TrendingUp,
+  CalendarClock,
+  PhoneCall
 } from 'lucide-react';
 import TourGuide from '@/components/TourGuide';
 import ProfileDropdown from '@/components/ProfileDropdown';
@@ -40,12 +43,84 @@ import ProfileDropdown from '@/components/ProfileDropdown';
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const activeCollectionId = searchParams ? searchParams.get('collection') : null;
+
   const [showTour, setShowTour] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [creditsCount, setCreditsCount] = useState<number>(2000);
   const [creditsLimit, setCreditsLimit] = useState<number>(2000);
+
+  // Collections & Custom Interactive States
+  const [collections, setCollections] = useState<any[]>([]);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const [newCollectionDescription, setNewCollectionDescription] = useState('');
+  const [creditsFlash, setCreditsFlash] = useState(false);
+
+  const fetchCollectionsData = async () => {
+    const cols = await getCollections();
+    setCollections(cols);
+  };
+
+  const fetchCreditsData = async () => {
+    const val = await getCredits();
+    setCreditsCount(val);
+  };
+
+  useEffect(() => {
+    fetchCollectionsData();
+    fetchCreditsData();
+
+    const handleCollectionsUpdate = () => {
+      fetchCollectionsData();
+    };
+
+    const handleCreditsUpdate = (e: any) => {
+      if (e.detail?.credits !== undefined) {
+        setCreditsCount(e.detail.credits);
+      } else {
+        fetchCreditsData();
+      }
+    };
+
+    window.addEventListener('vectra-collections-updated', handleCollectionsUpdate);
+    window.addEventListener('vectra-credits-updated', handleCreditsUpdate);
+
+    return () => {
+      window.removeEventListener('vectra-collections-updated', handleCollectionsUpdate);
+      window.removeEventListener('vectra-credits-updated', handleCreditsUpdate);
+    };
+  }, []);
+
+  const handleCreateCollection = async () => {
+    if (!newCollectionName.trim()) return;
+    try {
+      await createCollection(newCollectionName.trim(), newCollectionDescription.trim());
+      setNewCollectionName('');
+      setNewCollectionDescription('');
+      setShowCreateModal(false);
+      
+      // Refresh local list and trigger window event
+      await fetchCollectionsData();
+      window.dispatchEvent(new Event('vectra-collections-updated'));
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  // Animate credit changes
+  const prevCreditsRef = React.useRef(creditsCount);
+  useEffect(() => {
+    if (creditsCount < prevCreditsRef.current) {
+      setCreditsFlash(true);
+      const timer = setTimeout(() => setCreditsFlash(false), 1200);
+      return () => clearTimeout(timer);
+    }
+    prevCreditsRef.current = creditsCount;
+  }, [creditsCount]);
 
   useEffect(() => {
     const checkUserAndTour = async () => {
@@ -176,6 +251,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       icon: Mail,
     },
     {
+      name: 'Follow-up',
+      href: '/app/followup',
+      icon: CalendarClock,
+    },
+    {
       name: 'Inbox',
       href: '/app/inbox',
       icon: MessageSquare,
@@ -189,6 +269,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       name: 'Analytics',
       href: '/app/analytics',
       icon: TrendingUp,
+    },
+    {
+      name: 'Training',
+      href: '/app/training',
+      icon: PhoneCall,
     },
   ];
 
@@ -375,9 +460,40 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <div className="pt-4 border-t border-zinc-100 space-y-2">
               <div className="flex items-center justify-between px-3 text-[10px] font-bold text-zinc-400 uppercase tracking-wider select-none">
                 <span>Collections</span>
-                <Plus className="h-3.5 w-3.5 text-zinc-400 hover:text-zinc-600 cursor-pointer" />
+                <Plus 
+                  onClick={() => setShowCreateModal(true)} 
+                  className="h-3.5 w-3.5 text-zinc-400 hover:text-zinc-950 hover:scale-110 transition-transform cursor-pointer" 
+                />
               </div>
-              <p className="text-[10px] text-zinc-400 italic px-3">No collections added yet</p>
+              {collections.length === 0 ? (
+                <p className="text-[10px] text-zinc-400 italic px-3">No collections added yet</p>
+              ) : (
+                <div className="space-y-0.5 px-1 animate-in fade-in duration-300">
+                  {collections.map((col) => {
+                    const isActive = pathname === '/app/library' && activeCollectionId === col.id;
+                    return (
+                      <Link
+                        key={col.id}
+                        href={`/app/library?collection=${col.id}`}
+                        className={`group flex items-center justify-between rounded-lg px-3 py-1.5 text-[11px] font-medium transition-all ${
+                          isActive
+                            ? 'bg-[#E6F7ED] text-[#227A4B] font-bold'
+                            : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950'
+                        }`}
+                      >
+                        <span className="truncate max-w-[130px]">{col.name}</span>
+                        <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold shrink-0 transition-colors ${
+                          isActive
+                            ? 'bg-[#227A4B]/20 text-[#227A4B]'
+                            : 'bg-zinc-100 text-zinc-500 group-hover:bg-zinc-200'
+                        }`}>
+                          {col.count}
+                        </span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           )}
         </nav>
@@ -387,12 +503,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           
           {/* Monthly Credits Balance widget */}
           {!isCollapsed && (
-            <div className="flex items-center justify-between text-xs px-2 select-none border-b border-zinc-100 pb-2">
+            <div className={`flex items-center justify-between text-xs px-2 select-none border border-transparent transition-all duration-500 rounded-lg ${
+              creditsFlash 
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800 scale-102 py-1.5 shadow-sm' 
+                : 'border-b border-zinc-100 pb-2'
+            }`}>
               <div className="flex items-center gap-2 text-zinc-500 font-medium">
-                <Coins className="h-4 w-4 text-amber-500 shrink-0" />
-                <span>Monthly Credits</span>
+                <Coins className={`h-4 w-4 shrink-0 transition-all duration-300 ${
+                  creditsFlash ? 'text-emerald-500 scale-125 animate-bounce' : 'text-amber-500'
+                }`} />
+                <span className={creditsFlash ? 'text-emerald-800 font-bold' : ''}>Monthly Credits</span>
               </div>
-              <span className="font-extrabold text-zinc-800">{creditsCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}</span>
+              <span className={`font-extrabold transition-all duration-300 ${
+                creditsFlash ? 'text-emerald-600 scale-110 text-sm' : 'text-zinc-800'
+              }`}>
+                {creditsCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
+              </span>
             </div>
           )}
 
@@ -463,6 +589,63 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       <main className="flex-1 flex flex-col h-full overflow-hidden bg-zinc-50">
         {children}
       </main>
+
+      {showCreateModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-950/40 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="w-full max-w-md bg-white border border-zinc-200 rounded-2xl p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-200 mx-4">
+            <div className="space-y-1">
+              <h3 className="text-base font-extrabold text-zinc-900">Créer une nouvelle collection</h3>
+              <p className="text-xs text-zinc-400">Regroupez vos leads qualifiés dans des dossiers spécifiques pour vos campagnes.</p>
+            </div>
+            
+            <div className="space-y-3">
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Nom de la collection</label>
+                <input 
+                  type="text"
+                  placeholder="Ex: SaaS Founders - Canada"
+                  value={newCollectionName}
+                  onChange={(e) => setNewCollectionName(e.target.value)}
+                  className="w-full h-9 rounded-lg border border-zinc-200 px-3 text-xs bg-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <label className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider font-sans">Description (Optionnelle)</label>
+                <textarea 
+                  placeholder="Ex: Cibles prioritaires identifiées via Sourcing Copilot"
+                  value={newCollectionDescription}
+                  onChange={(e) => setNewCollectionDescription(e.target.value)}
+                  className="w-full h-16 rounded-lg border border-zinc-200 p-3 text-xs bg-white focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-zinc-100">
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => {
+                  setShowCreateModal(false);
+                  setNewCollectionName('');
+                  setNewCollectionDescription('');
+                }}
+                className="h-8 text-xs font-bold border-zinc-200 hover:bg-zinc-50"
+              >
+                Annuler
+              </Button>
+              <Button 
+                size="sm" 
+                onClick={handleCreateCollection}
+                disabled={!newCollectionName.trim()}
+                className="bg-primary hover:bg-primary/95 text-white h-8 text-xs font-bold"
+              >
+                Créer la collection
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {showTour && <TourGuide onClose={handleTourClose} />}
     </div>

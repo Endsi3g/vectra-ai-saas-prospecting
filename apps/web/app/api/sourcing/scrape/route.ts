@@ -10,6 +10,7 @@ const MOCK_LEAD_POOL = [
     email: 'alexandre@optima-ai.io',
     title: 'Co-Founder & CEO',
     location: 'Montreal, Canada',
+    match_score: 95,
     notes: 'SaaS platform automating engineering pipeline metrics. Team size: 12. LinkedIn: linkedin.com/in/alexandre-dupont-optima'
   },
   {
@@ -19,6 +20,7 @@ const MOCK_LEAD_POOL = [
     email: 'sarah@flowstate.co',
     title: 'Founder & CTO',
     location: 'Toronto, Canada',
+    match_score: 87,
     notes: 'Developer workflow automation tool with active engineering structures. Team size: 8. LinkedIn: linkedin.com/in/sarah-jenkins-flowstate'
   },
   {
@@ -28,6 +30,7 @@ const MOCK_LEAD_POOL = [
     email: 'm.lavoie@vidio.io',
     title: 'Founder',
     location: 'Vancouver, Canada',
+    match_score: 82,
     notes: 'AI-driven video hosting and conversion SaaS. Raised Seed $1.5M. Team size: 15. LinkedIn: linkedin.com/in/marcandre-lavoie-vidio'
   },
   {
@@ -37,6 +40,7 @@ const MOCK_LEAD_POOL = [
     email: 'emily@ledgerly.app',
     title: 'Co-Founder & CEO',
     location: 'Calgary, Canada',
+    match_score: 74,
     notes: 'Crypto accounting SaaS for small business owners. Team size: 6. LinkedIn: linkedin.com/in/emily-zhao-ledgerly'
   },
   {
@@ -46,6 +50,7 @@ const MOCK_LEAD_POOL = [
     email: 'g.pelletier@logix-systems.fr',
     title: 'CEO',
     location: 'Paris, France',
+    match_score: 89,
     notes: 'Warehouse automation platform and API connector. Team size: 25. LinkedIn: linkedin.com/in/guillaume-pelletier-logix'
   },
   {
@@ -55,6 +60,7 @@ const MOCK_LEAD_POOL = [
     email: 'jessica@talentloop.ai',
     title: 'Founder',
     location: 'San Francisco, USA',
+    match_score: 93,
     notes: 'AI recruiter search agent. Integrating outbound personalization pipelines. Team size: 10. LinkedIn: linkedin.com/in/jessica-vance-talentloop'
   }
 ];
@@ -97,6 +103,11 @@ export async function POST(req: Request) {
     if (scrapegraphApiKey) {
       console.log('Interrogating ScrapeGraphAI SmartScraper API...');
       try {
+        const isLinkedIn = url && url.toLowerCase().includes('linkedin.com');
+        const scraperPrompt = isLinkedIn
+          ? `Extract candidate details from this LinkedIn profile page. Provide: name, company, website URL, contact email, job title, and brief notes/bio. Return as a JSON object inside a JSON array.`
+          : `Extract a list of companies or professionals matching the query "${query || 'SaaS Founders'}". For each entry, provide: name, company, website URL, contact email, job title, and brief notes/bio. Return as JSON array.`;
+
         const response = await fetch('https://api.scrapegraph.ai/v1/smartscraper', {
           method: 'POST',
           headers: {
@@ -105,16 +116,46 @@ export async function POST(req: Request) {
           },
           body: JSON.stringify({
             url: url || 'https://news.ycombinator.com',
-            prompt: `Extract a list of companies matching the query "${query || 'SaaS Founders'}". For each entry, provide: name, company, website URL, contact email, job title, and brief notes/bio. Return as JSON array.`,
+            prompt: scraperPrompt,
           })
         });
         
         const data = await response.json();
         if (data && data.results) {
-          leads = data.results.slice(0, limit);
+          let results = data.results;
+          if (typeof results === 'string') {
+            try {
+              results = JSON.parse(results);
+            } catch (e) {
+              console.warn("Failed to parse results string:", e);
+            }
+          }
+          if (Array.isArray(results)) {
+            leads = results.slice(0, limit);
+          } else if (typeof results === 'object' && results !== null) {
+            leads = [results];
+          }
         }
       } catch (err) {
         console.warn('ScrapeGraphAI API call failed, falling back to mock parser:', err);
+      }
+    }
+
+    // Fallback: Map by target URL first for high-fidelity simulation
+    if (leads.length === 0 && url) {
+      const urlStr = url.toLowerCase();
+      if (urlStr.includes('dupont') || urlStr.includes('optima')) {
+        leads = [MOCK_LEAD_POOL[0]];
+      } else if (urlStr.includes('jenkins') || urlStr.includes('flowstate')) {
+        leads = [MOCK_LEAD_POOL[1]];
+      } else if (urlStr.includes('lavoie') || urlStr.includes('vidio')) {
+        leads = [MOCK_LEAD_POOL[2]];
+      } else if (urlStr.includes('zhao') || urlStr.includes('ledgerly')) {
+        leads = [MOCK_LEAD_POOL[3]];
+      } else if (urlStr.includes('pelletier') || urlStr.includes('logix')) {
+        leads = [MOCK_LEAD_POOL[4]];
+      } else if (urlStr.includes('vance') || urlStr.includes('talentloop')) {
+        leads = [MOCK_LEAD_POOL[5]];
       }
     }
 

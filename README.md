@@ -29,7 +29,30 @@ Inspired by premium visual systems and the direct, interactive network search of
 - **Natural Language Pitching**: Pitch offerings and target audiences using an NLP text panel.
 - **Copilot Outreach Insights**: Contextual suggestions summarizing lead lists and advising on prioritization.
 - **Fit: High/Med/Low Badging**: AI-calculated personalization scoring to identify high-probability conversions.
-- **Shortlist / Hide Controls**: Instantly shortlist candidates for outreach or hide them from the active list to focus focus.
+- **Shortlist / Hide Controls**: Instantly shortlist candidates for outreach or hide them from the active list to focus.
+
+### 6. Unified Inbox & Magic Replies (`/app/inbox`)
+- **Triple-pane layout**: Group messages by automated sentiment analysis tags (*Intéressés*, *Objections*, *Désabonnés*).
+- **Magic Replies (IA)**: Rapid one-click objection handling, pricing justification, or meeting scheduling templates populated using dynamic context.
+
+### 7. Autonomous Agent Workflows Panel (`/app/agents`)
+- **Agent Controls**: Toggle switches to activate autonomous agents (**Hermes** sourcing scraper, **Apollo** personalization engine, and **Athena** news monitor).
+- **Global Settings Controls**: Adjustable minimum fit sliders, daily lead boundaries, default tone settings, and automated workflow frequency selectors.
+
+### 8. Analytics & Conversion Funnel Dashboard (`/app/analytics`)
+- **Real-Time KPIs**: Track total sent, open rates, response rates, and scheduled meetings.
+- **Visual Funnel**: Custom visual funnel tracing drops from leads down to booked meetings.
+- **Data Export**: Complete outbound metrics and campaign analysis exportable in CSV format.
+
+### 9. Follow-up Pipeline Tracker (`/app/followup`)
+- **Contact Tracking Table**: Real-time pipeline oversight tracking last contact date, next planned touchpoints, and CRM stages.
+- **Overdue Alerting Widget**: Dynamic check that highlights late prospects with a prominent **"En retard" (Overdue)** warning badge.
+- **Status Sync Selectors**: Direct selectors to update stages (*Pas de réponse*, *Relance 1*, *Meeting pris*, *Deal conclu*) synced directly with the database.
+
+### 10. Cold Calling AI Training & objection trainer (`/app/training`)
+- **Simulated Buyer Personas**: Practice cold calls against *Le CEO Pressé*, *Le CTO Sceptique*, or *Le RH sans Budget*.
+- **Objection Trainer Engine**: Interactive text-and-mic simulator with responsive AI objections based on user inputs.
+- **Sales Metrics Scoreboard**: Renders post-call scorecards grading *Listening Score* and *Persuasion Score* out of 100 to measure call effectiveness.
 
 ---
 

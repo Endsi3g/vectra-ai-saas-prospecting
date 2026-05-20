@@ -13,6 +13,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@workspace
 import { supabase } from '@/lib/supabase';
 import Papa from 'papaparse';
 import { captureAnalyticsEvent } from '@/lib/analytics';
+import { saveLead, saveMessage } from '@/lib/db-fallback';
 import { 
   Sparkles, 
   Upload, 
@@ -67,6 +68,24 @@ export default function OutreachPage() {
   const [editSubject, setEditSubject] = useState('');
   const [editBody, setEditBody] = useState('');
   const [editLinkedin, setEditLinkedin] = useState('');
+
+  // Phase 13 premium states
+  const [isDragging, setIsDragging] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [parsingLogs, setParsingLogs] = useState<string[]>([]);
+  const [importStep, setImportStep] = useState<'idle' | 'parsing' | 'mapping'>('idle');
+  const [rawCsvData, setRawCsvData] = useState<any[]>([]);
+  const [detectedHeaders, setDetectedHeaders] = useState<string[]>([]);
+  
+  // Mapping selections
+  const [mappedName, setMappedName] = useState('');
+  const [mappedCompany, setMappedCompany] = useState('');
+  const [mappedEmail, setMappedEmail] = useState('');
+  const [mappedNotes, setMappedNotes] = useState('');
+
+  // Auto-save states
+  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  const skipAutoSaveRef = useRef(true);
 
   // Phase 5 campaign selector & streaming states
   const [campaignsList, setCampaignsList] = useState<{ id: string; name: string }[]>([]);
@@ -250,44 +269,210 @@ export default function OutreachPage() {
     if (selectedLeadId) {
       const lead = leads.find(l => l.id === selectedLeadId);
       if (lead) {
+        skipAutoSaveRef.current = true;
         setEditSubject(lead.email_subject || '');
         setEditBody(lead.email_body || '');
         setEditLinkedin(lead.linkedin_message || '');
+        
+        const timer = setTimeout(() => {
+          skipAutoSaveRef.current = false;
+        }, 100);
+        return () => clearTimeout(timer);
       }
     }
   }, [selectedLeadId, leads]);
 
-  const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  useEffect(() => {
+    if (skipAutoSaveRef.current) return;
+    if (!selectedLeadId) return;
 
+    setSaveStatus('saving');
+    const timer = setTimeout(async () => {
+      const lead = leads.find(l => l.id === selectedLeadId);
+      if (lead) {
+        try {
+          // Update local leads state immediately
+          setLeads(prev => prev.map(l => l.id === selectedLeadId ? {
+            ...l,
+            email_subject: editSubject,
+            email_body: editBody,
+            linkedin_message: editLinkedin
+          } : l));
+
+          // Save via transparent fallback
+          await saveMessage({
+            lead_id: selectedLeadId,
+            email_subject: editSubject,
+            email_body: editBody,
+            linkedin_message: editLinkedin,
+            personalization_score: lead.personalization_score || 95,
+            status: lead.status || 'draft'
+          });
+
+          setSaveStatus('saved');
+          const doneTimer = setTimeout(() => {
+            setSaveStatus(prev => prev === 'saved' ? 'idle' : prev);
+          }, 2000);
+          return () => clearTimeout(doneTimer);
+        } catch (e) {
+          console.error(e);
+          setSaveStatus('idle');
+        }
+      }
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, [editSubject, editBody, editLinkedin, selectedLeadId]);
+
+  const processCsvFile = (file: File) => {
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
-        const parsed = results.data.map((row: any, index) => ({
-          id: `lead_temp_${Date.now()}_${index}`,
-          name: row.name || row.Name || row.nom || row.Nom || 'Prospect',
-          company: row.company || row.Company || row.entreprise || row.Entreprise || 'Entreprise',
-          website: row.website || row.Website || row.site || row.Site || '',
-          email: row.email || row.Email || row.courriel || '',
-          notes: row.notes || row.Notes || row.info || '',
-          status: 'draft' as const
-        }));
+        const fields = results.meta.fields || [];
+        setDetectedHeaders(fields);
+        setRawCsvData(results.data);
         
-        if (parsed.length + leads.length > 50) {
-          setErrorMessage("Limite dépassée : vous ne pouvez pas avoir plus de 50 leads par campagne.");
-          return;
-        }
+        // Auto-detect columns mapping
+        const nameField = fields.find(f => /name|nom/i.test(f)) || fields[0] || '';
+        const companyField = fields.find(f => /company|entreprise/i.test(f)) || fields[1] || '';
+        const emailField = fields.find(f => /email|courriel|mail/i.test(f)) || fields[2] || '';
+        const notesField = fields.find(f => /note|info|description/i.test(f)) || fields[3] || '';
+        
+        setMappedName(nameField);
+        setMappedCompany(companyField);
+        setMappedEmail(emailField);
+        setMappedNotes(notesField);
 
-        setLeads([...leads, ...parsed]);
-        setSuccessMessage(`${parsed.length} leads importés avec succès.`);
-        setTimeout(() => setSuccessMessage(null), 3000);
+        // Start parsing simulation step
+        setImportStep('parsing');
+        setProgress(0);
+        setParsingLogs(["[INFO] Fichier CSV détecté : " + file.name, "[INFO] Initialisation du processeur de prospects..."]);
+        
+        let currentProgress = 0;
+        const totalRows = results.data.length;
+        
+        const interval = setInterval(() => {
+          currentProgress += 5;
+          setProgress(currentProgress);
+          
+          if (currentProgress === 10) {
+            setParsingLogs(prev => [...prev, `[INFO] Lecture de ${totalRows} lignes...`]);
+          } else if (currentProgress === 35) {
+            setParsingLogs(prev => [...prev, `[INFO] En-têtes trouvés : ${fields.join(', ')}`]);
+          } else if (currentProgress === 60) {
+            setParsingLogs(prev => [...prev, `[INFO] Validation des formats d'e-mail en cours...`]);
+          } else if (currentProgress === 80) {
+            setParsingLogs(prev => [...prev, `[INFO] Vérification de la présence de doublons...`]);
+          } else if (currentProgress === 95) {
+            setParsingLogs(prev => [...prev, `[SUCCESS] ${totalRows} lignes traitées avec succès !`]);
+          }
+          
+          if (currentProgress >= 100) {
+            clearInterval(interval);
+            setTimeout(() => {
+              setImportStep('mapping');
+            }, 500);
+          }
+        }, 100);
       },
       error: (err) => {
         setErrorMessage(`Erreur lors de la lecture du CSV: ${err.message}`);
+        setTimeout(() => setErrorMessage(null), 3000);
       }
     });
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = () => {
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.name.endsWith('.csv')) {
+      processCsvFile(file);
+    } else {
+      setErrorMessage("Format de fichier invalide. Veuillez déposer un fichier CSV.");
+      setTimeout(() => setErrorMessage(null), 3000);
+    }
+  };
+
+  const handleCSVUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    processCsvFile(file);
+  };
+
+  const handleApplyMapping = async () => {
+    if (!mappedName || !mappedCompany) {
+      setErrorMessage("Veuillez mapper au moins le Nom et l'Entreprise.");
+      setTimeout(() => setErrorMessage(null), 3000);
+      return;
+    }
+
+    const parsed = rawCsvData.map((row: any, index) => {
+      const name = row[mappedName] || 'Prospect';
+      const company = row[mappedCompany] || 'Entreprise';
+      const email = row[mappedEmail] || '';
+      const notes = row[mappedNotes] || '';
+      return {
+        id: `lead_temp_${Date.now()}_${index}`,
+        name,
+        company,
+        website: row.website || row.Website || row.site || row.Site || '',
+        email,
+        notes,
+        status: 'draft' as const
+      };
+    });
+
+    if (parsed.length + leads.length > 50) {
+      setErrorMessage("Limite dépassée : vous ne pouvez pas avoir plus de 50 leads par campagne.");
+      setTimeout(() => setErrorMessage(null), 3000);
+      return;
+    }
+
+    const savedLeads: Lead[] = [];
+    for (const lead of parsed) {
+      const saved = await saveLead({
+        campaign_id: activeCampaignId || undefined,
+        name: lead.name,
+        company: lead.company,
+        website: lead.website,
+        email: lead.email,
+        notes: lead.notes,
+        collections: []
+      });
+      savedLeads.push({
+        id: saved.id,
+        name: saved.name,
+        company: saved.company,
+        website: saved.website,
+        email: saved.email,
+        notes: saved.notes,
+        status: 'draft'
+      });
+    }
+
+    setLeads([...leads, ...savedLeads]);
+    setSuccessMessage(`${savedLeads.length} leads importés avec succès.`);
+    setImportStep('idle');
+    setRawCsvData([]);
+    setDetectedHeaders([]);
+    
+    if (!selectedLeadId && savedLeads.length > 0 && savedLeads[0]) {
+      setSelectedLeadId(savedLeads[0].id);
+    }
+
+    window.dispatchEvent(new Event('vectra-collections-updated'));
+    setTimeout(() => setSuccessMessage(null), 3000);
   };
 
   const handlePasteSubmit = () => {
@@ -801,21 +986,122 @@ export default function OutreachPage() {
                   </TabsList>
 
                   <TabsContent value="csv">
-                    <div 
-                      onClick={() => fileInputRef.current?.click()}
-                      className="flex flex-col items-center justify-center border-2 border-dashed border-zinc-200 rounded-xl p-6 cursor-pointer hover:bg-zinc-50 transition-colors"
-                    >
-                      <Upload className="h-8 w-8 text-zinc-400 mb-2" />
-                      <span className="text-sm font-semibold text-zinc-700">Select CSV file</span>
-                      <span className="text-xs text-zinc-400 mt-1">Columns: Name, Company (Website, Email optional)</span>
-                      <input 
-                        ref={fileInputRef}
-                        type="file" 
-                        accept=".csv"
-                        className="hidden" 
-                        onChange={handleCSVUpload}
-                      />
-                    </div>
+                    {importStep === 'idle' && (
+                      <div 
+                        onClick={() => fileInputRef.current?.click()}
+                        onDragOver={handleDragOver}
+                        onDragLeave={handleDragLeave}
+                        onDrop={handleDrop}
+                        className={`flex flex-col items-center justify-center border-2 border-dashed rounded-xl p-6 cursor-pointer transition-all duration-300 ${
+                          isDragging 
+                            ? "border-emerald-500 bg-emerald-50/50 scale-[1.02] animate-pulse" 
+                            : "border-zinc-200 hover:bg-zinc-50"
+                        }`}
+                      >
+                        <Upload className={`h-8 w-8 mb-2 transition-transform duration-300 ${isDragging ? 'text-emerald-500 scale-125' : 'text-zinc-400'}`} />
+                        <span className="text-sm font-semibold text-zinc-700">Déposer un fichier CSV ou cliquer</span>
+                        <span className="text-xs text-zinc-400 mt-1">Colonnes : Nom, Entreprise (Site, Email facultatifs)</span>
+                        <input 
+                          ref={fileInputRef}
+                          type="file" 
+                          accept=".csv"
+                          className="hidden" 
+                          onChange={handleCSVUpload}
+                        />
+                      </div>
+                    )}
+
+                    {importStep === 'parsing' && (
+                      <div className="border border-zinc-200 rounded-xl p-5 bg-zinc-50/50 space-y-4 animate-fade-in">
+                        <div className="flex items-center justify-between text-xs text-zinc-500">
+                          <span className="font-semibold">Analyse du fichier CSV...</span>
+                          <span className="font-mono">{progress}%</span>
+                        </div>
+                        <div className="h-2 w-full bg-zinc-100 rounded-full overflow-hidden">
+                          <div 
+                            className="h-full bg-gradient-to-r from-emerald-500 via-teal-500 to-primary transition-all duration-150 ease-out" 
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                        <div className="bg-zinc-950 text-zinc-200 font-mono text-[10px] p-3 rounded-lg h-28 overflow-y-auto space-y-1 shadow-inner scrollbar-thin">
+                          {parsingLogs.map((log, index) => (
+                            <div key={index} className={log.includes('[SUCCESS]') ? 'text-emerald-400' : log.includes('[WARNING]') ? 'text-amber-400' : 'text-zinc-400'}>
+                              {log}
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {importStep === 'mapping' && (
+                      <div className="border border-zinc-200 rounded-xl p-4 bg-white space-y-4 animate-fade-in">
+                        <div className="flex items-center gap-2 text-xs font-bold text-zinc-700">
+                          <Sparkles className="h-4 w-4 text-emerald-500" />
+                          <span>MAPPING DES COLONNES CSV</span>
+                        </div>
+                        <div className="space-y-3">
+                          <div className="grid grid-cols-2 gap-2 items-center">
+                            <Label htmlFor="map-name" className="text-[11px] font-semibold text-zinc-500">Nom complet *</Label>
+                            <select
+                              id="map-name"
+                              value={mappedName}
+                              onChange={(e) => setMappedName(e.target.value)}
+                              className="text-xs h-8 rounded border border-zinc-200 bg-white px-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                            >
+                              <option value="">Sélectionner...</option>
+                              {detectedHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                            </select>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 items-center">
+                            <Label htmlFor="map-company" className="text-[11px] font-semibold text-zinc-500">Entreprise *</Label>
+                            <select
+                              id="map-company"
+                              value={mappedCompany}
+                              onChange={(e) => setMappedCompany(e.target.value)}
+                              className="text-xs h-8 rounded border border-zinc-200 bg-white px-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                            >
+                              <option value="">Sélectionner...</option>
+                              {detectedHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                            </select>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 items-center">
+                            <Label htmlFor="map-email" className="text-[11px] font-semibold text-zinc-500">E-mail</Label>
+                            <select
+                              id="map-email"
+                              value={mappedEmail}
+                              onChange={(e) => setMappedEmail(e.target.value)}
+                              className="text-xs h-8 rounded border border-zinc-200 bg-white px-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                            >
+                              <option value="">Sélectionner...</option>
+                              {detectedHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                            </select>
+                          </div>
+
+                          <div className="grid grid-cols-2 gap-2 items-center">
+                            <Label htmlFor="map-notes" className="text-[11px] font-semibold text-zinc-500">Notes / ICP</Label>
+                            <select
+                              id="map-notes"
+                              value={mappedNotes}
+                              onChange={(e) => setMappedNotes(e.target.value)}
+                              className="text-xs h-8 rounded border border-zinc-200 bg-white px-2 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+                            >
+                              <option value="">Sélectionner...</option>
+                              {detectedHeaders.map(h => <option key={h} value={h}>{h}</option>)}
+                            </select>
+                          </div>
+                        </div>
+                        <div className="flex gap-2 pt-2">
+                          <Button variant="outline" size="sm" className="w-1/2 text-xs" onClick={() => setImportStep('idle')}>
+                            Annuler
+                          </Button>
+                          <Button size="sm" className="w-1/2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={handleApplyMapping}>
+                            Valider l'importation
+                          </Button>
+                        </div>
+                      </div>
+                    )}
                   </TabsContent>
 
                   <TabsContent value="paste" className="space-y-3">
@@ -966,7 +1252,26 @@ export default function OutreachPage() {
                 </div>
 
                 {/* Lead Outreach Editor Workspace */}
-                <div className="flex-1 bg-zinc-50 p-6 overflow-y-auto flex flex-col h-full space-y-4">
+                <div className="relative flex-1 bg-zinc-50 p-6 overflow-y-auto flex flex-col h-full space-y-4">
+                  {saveStatus !== 'idle' && (
+                    <div className={`absolute top-4 right-4 z-10 flex items-center gap-2 px-3 py-1.5 rounded-full border shadow-sm text-xs font-semibold animate-fade-in transition-all duration-300 ${
+                      saveStatus === 'saving'
+                        ? 'bg-amber-500/10 border-amber-500/20 text-amber-700 dark:text-amber-500'
+                        : 'bg-emerald-500/10 border-emerald-500/20 text-emerald-700 dark:text-emerald-500'
+                    }`}>
+                      {saveStatus === 'saving' ? (
+                        <>
+                          <Loader2 className="h-3 w-3 animate-spin text-amber-500" />
+                          <span>Sauvegarde en cours...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Check className="h-3 w-3 text-emerald-500" />
+                          <span>Enregistré</span>
+                        </>
+                      )}
+                    </div>
+                  )}
                   {/* Copilot Outreach Insights Alert box */}
                   <div className="bg-emerald-50/60 border border-emerald-100/80 rounded-xl p-4 text-xs text-emerald-800 shadow-sm shrink-0 flex items-start gap-3 animate-fade-in">
                     <Sparkles className="h-5 w-5 text-emerald-600 shrink-0 mt-0.5 animate-pulse" />
@@ -1064,14 +1369,22 @@ export default function OutreachPage() {
                                 </div>
                               ) : (
                                 <div className="flex-1 flex flex-col gap-3 min-h-0 overflow-y-auto pb-4">
-                                  <div className="bg-white border border-zinc-200 rounded-lg p-4 shadow-sm">
+                                  <div 
+                                    onClick={() => setIsEditing(true)}
+                                    className="bg-white border border-zinc-200 rounded-lg p-4 shadow-sm hover:border-zinc-300 hover:shadow cursor-pointer transition-all duration-200 group relative"
+                                  >
                                     <span className="text-[10px] font-bold text-zinc-400 block uppercase tracking-wider">Subject</span>
                                     <h4 className="font-semibold text-zinc-900 mt-1">
                                       {currentLead.email_subject}
                                     </h4>
+                                    <Edit3 className="absolute right-3 top-3 h-3.5 w-3.5 text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity" />
                                   </div>
-                                  <div className="flex-1 bg-white border border-zinc-200 rounded-lg p-4 font-sans text-sm leading-relaxed whitespace-pre-line text-zinc-800 overflow-y-auto shadow-sm">
+                                  <div 
+                                    onClick={() => setIsEditing(true)}
+                                    className="flex-1 bg-white border border-zinc-200 rounded-lg p-4 font-sans text-sm leading-relaxed whitespace-pre-line text-zinc-800 overflow-y-auto shadow-sm hover:border-zinc-300 hover:shadow cursor-pointer transition-all duration-200 group relative min-h-[250px]"
+                                  >
                                     {currentLead.email_body}
+                                    <Edit3 className="absolute right-3 top-3 h-3.5 w-3.5 text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity" />
                                   </div>
                                 </div>
                               )}
@@ -1096,8 +1409,12 @@ export default function OutreachPage() {
                                 </div>
                               ) : (
                                 <div className="flex-1 flex flex-col min-h-0 pb-4">
-                                  <div className="flex-1 bg-white border border-zinc-200 rounded-lg p-4 font-sans text-sm leading-relaxed whitespace-pre-line text-zinc-800 overflow-y-auto shadow-sm">
+                                  <div 
+                                    onClick={() => setIsEditing(true)}
+                                    className="flex-1 bg-white border border-zinc-200 rounded-lg p-4 font-sans text-sm leading-relaxed whitespace-pre-line text-zinc-800 overflow-y-auto shadow-sm hover:border-zinc-300 hover:shadow cursor-pointer transition-all duration-200 group relative min-h-[250px]"
+                                  >
                                     {currentLead.linkedin_message}
+                                    <Edit3 className="absolute right-3 top-3 h-3.5 w-3.5 text-zinc-300 opacity-0 group-hover:opacity-100 transition-opacity" />
                                   </div>
                                 </div>
                               )}

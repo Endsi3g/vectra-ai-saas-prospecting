@@ -25,6 +25,7 @@ import {
   CornerDownLeft
 } from 'lucide-react';
 import { captureAnalyticsEvent } from '@/lib/analytics';
+import { supabase } from '@/lib/supabase';
 
 interface Message {
   sender: 'user' | 'prospect';
@@ -133,7 +134,94 @@ export default function InboxPage() {
     }
   ]);
 
+  useEffect(() => {
+    const fetchRealConversations = async () => {
+      try {
+        const { data: dbConversations, error: convError } = await supabase
+          .from('inbox_conversations')
+          .select(`
+            id,
+            sentiment,
+            last_message_text,
+            updated_at,
+            lead:lead_id (
+              name,
+              company,
+              email,
+              website,
+              campaign:campaign_id (
+                name
+              )
+            ),
+            messages:inbox_messages (*)
+          `)
+          .order('updated_at', { ascending: false });
+
+        if (convError) throw convError;
+
+        if (dbConversations && dbConversations.length > 0) {
+          const formatted: Conversation[] = dbConversations.map((c: any) => {
+            const lead = c.lead || {};
+            const campaign = lead.campaign || {};
+            
+            // Map messages
+            const msgs = (c.messages || [])
+              .sort((m1: any, m2: any) => new Date(m1.created_at).getTime() - new Date(m2.created_at).getTime())
+              .map((m: any) => ({
+                sender: m.sender_type,
+                text: m.body,
+                timestamp: new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                magicReply: m.magic_reply_draft // Keep a ref to the pre-generated Magic Reply draft!
+              }));
+
+            return {
+              id: c.id,
+              prospectName: lead.name || 'Prospect Anonyme',
+              company: lead.company || 'Entreprise',
+              website: lead.website || '',
+              email: lead.email || '',
+              campaign: campaign.name || 'Campagne Directe',
+              matchScore: 92, // mock score
+              sentiment: c.sentiment,
+              lastMessage: c.last_message_text || '',
+              time: new Date(c.updated_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+              messages: msgs
+            };
+          });
+
+          setConversations(prev => {
+            // Filter out old real conversations to avoid duplication, keep the templates 1, 2, 3
+            const templateIds = ['conv-1', 'conv-2', 'conv-3'];
+            const templates = prev.filter(c => templateIds.includes(c.id));
+            return [...formatted, ...templates];
+          });
+          
+          setSelectedConvId(prevId => {
+            if (prevId === 'conv-1' && formatted.length > 0 && formatted[0]) {
+              return formatted[0].id;
+            }
+            return prevId;
+          });
+        }
+      } catch (err) {
+        console.error('Error fetching real inbox conversations:', err);
+      }
+    };
+
+    fetchRealConversations();
+    
+    // Refresh every 10 seconds for real-time vibe
+    const interval = setInterval(fetchRealConversations, 10000);
+    return () => clearInterval(interval);
+  }, []);
+
   const activeConv = (conversations.find(c => c.id === selectedConvId) || conversations[0]) as Conversation;
+
+  // Find if there is a pre-generated draft in the active conversation
+  const lastMsgWithDraft = activeConv && activeConv.messages 
+    ? [...activeConv.messages].reverse().find(m => m.sender === 'prospect' && (m as any).magicReply)
+    : null;
+  const preGeneratedDraft = lastMsgWithDraft ? (lastMsgWithDraft as any).magicReply : null;
 
   // Helper to show temporary toasts
   const triggerToast = (msg: string) => {
@@ -366,6 +454,31 @@ export default function InboxPage() {
 
           {/* Fixed bottom chat reply input workspace */}
           <div className="p-4 bg-white border-t border-zinc-200 space-y-3 shrink-0">
+            {preGeneratedDraft && replyText !== preGeneratedDraft && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center justify-between gap-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="space-y-0.5">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-800">
+                    <Sparkles className="h-3.5 w-3.5 text-emerald-500 animate-pulse" />
+                    <span>Brouillon Magic Reply pré-généré par l'IA</span>
+                  </div>
+                  <p className="text-[10px] text-zinc-500 italic line-clamp-1">
+                    "{preGeneratedDraft}"
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  onClick={() => {
+                    setReplyText(preGeneratedDraft);
+                    triggerToast('Brouillon de réponse IA appliqué dans la zone de texte !');
+                  }}
+                  className="h-7 px-3 bg-emerald-500 hover:bg-emerald-600 text-white text-[10px] font-bold rounded-lg shrink-0 flex items-center gap-1 shadow-sm border-none"
+                >
+                  <span>Appliquer</span>
+                  <Check className="h-3 w-3" />
+                </Button>
+              </div>
+            )}
+
             <form onSubmit={handleSendReply} className="space-y-3">
               <div className="relative">
                 <Textarea

@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@workspace/ui/components/button';
 import { Input } from '@workspace/ui/components/input';
 import { Label } from '@workspace/ui/components/label';
+import { Textarea } from '@workspace/ui/components/textarea';
 import { supabase } from '@/lib/supabase';
 import { 
   Lock, 
@@ -15,12 +16,13 @@ import {
   Building2, 
   Plus, 
   Mail, 
-  Upload, 
   Loader2, 
   Sparkles,
-  Calendar,
   Search,
-  ChevronRight
+  Compass,
+  Zap,
+  Globe,
+  Users
 } from 'lucide-react';
 
 type Step = 0 | 1 | 2 | 3 | 4;
@@ -31,23 +33,28 @@ export default function OnboardingPage() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState('');
   
-  // Step 0 states
+  // Step 0: Personal Info
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
   const [emailNotifications, setEmailNotifications] = useState(true);
 
-  // Step 1 states
-  const [googleConnected, setGoogleConnected] = useState(false);
-  const [connectingGoogle, setConnectingGoogle] = useState(false);
+  // Step 1: Enterprise Profile & Offer
+  const [companyName, setCompanyName] = useState('');
+  const [businessType, setBusinessType] = useState('solopreneur');
+  const [offerPitch, setOfferPitch] = useState('');
 
-  // Step 2 & 3 states
-  const [workspaceName, setWorkspaceName] = useState('');
-  const [workspaceSlug, setWorkspaceSlug] = useState('');
-  const [workspaceLogo, setWorkspaceLogo] = useState<string | null>(null);
+  // Step 2: ICP Targets
+  const [icpTarget, setIcpTarget] = useState('');
+  const [icpLocation, setIcpLocation] = useState('France');
+  const [icpHeadcount, setIcpHeadcount] = useState('1-10');
 
-  // Step 4 states
-  const [teammates, setTeammates] = useState('');
-  const [allowDomainJoin, setAllowDomainJoin] = useState(false);
+  // Step 3: Simulated Nylas Mailbox Connection
+  const [mailboxProvider, setMailboxProvider] = useState<'gmail' | 'outlook' | 'icloud' | null>(null);
+  const [mailboxConnected, setMailboxConnected] = useState(false);
+  const [connectingMailbox, setConnectingMailbox] = useState(false);
+
+  // Step 4: Plan Trial & Completion
+  const [selectedPlan, setSelectedPlan] = useState<'starter' | 'solo'>('starter');
 
   useEffect(() => {
     // Fetch current user email
@@ -56,33 +63,20 @@ export default function OnboardingPage() {
       if (user) {
         setEmail(user.email || '');
       } else {
-        // Fallback email for mock development
-        setEmail('kael@wrangle.com');
+        setEmail('alex@vectra.ai');
       }
     };
     fetchUser();
   }, []);
 
-  // Sync workspace slug from name
-  useEffect(() => {
-    if (workspaceName) {
-      const slug = workspaceName
-        .toLowerCase()
-        .replace(/[^a-z0-9]+/g, '-')
-        .replace(/(^-|-$)+/g, '');
-      setWorkspaceSlug(slug);
-    } else {
-      setWorkspaceSlug('');
-    }
-  }, [workspaceName]);
-
-  const handleConnectGoogle = () => {
-    setConnectingGoogle(true);
+  const handleConnectMailbox = (provider: 'gmail' | 'outlook' | 'icloud') => {
+    setMailboxProvider(provider);
+    setConnectingMailbox(true);
     setTimeout(() => {
-      setGoogleConnected(true);
-      setConnectingGoogle(false);
-      // Auto-advance after successful simulated connection
-      setTimeout(() => setStep(2), 800);
+      setMailboxConnected(true);
+      setConnectingMailbox(false);
+      // Auto-advance after successful connection simulation
+      setTimeout(() => setStep(4), 800);
     }, 1500);
   };
 
@@ -104,50 +98,45 @@ export default function OnboardingPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         let workspaceId = null;
-        if (workspaceName) {
+        if (companyName) {
           // Create workspace in Supabase
-          const { data: ws, error: wsError } = await supabase
+          const { data: ws } = await supabase
             .from('workspaces')
             .insert({
-              name: workspaceName,
-              slug: workspaceSlug || workspaceName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
-              logo_url: workspaceLogo
+              name: companyName,
+              slug: companyName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
             })
             .select()
             .single();
           
-          if (wsError) throw wsError;
           if (ws) workspaceId = ws.id;
         }
 
-        // Update profile schema
-        const { error: profileError } = await supabase
+        // Update profile
+        await supabase
           .from('profiles')
           .update({
             first_name: firstName,
             last_name: lastName,
             workspace_id: workspaceId,
-            google_connected: googleConnected,
+            google_connected: mailboxConnected,
             onboarding_completed: true,
-            tour_completed: false // triggers tour guide
+            tour_completed: false // triggers tour guide on dashboard
           })
           .eq('id', user.id);
-
-        if (profileError) throw profileError;
       } else {
         // Mock save to localStorage
         localStorage.setItem('first_name', firstName);
         localStorage.setItem('last_name', lastName);
-        localStorage.setItem('workspace_name', workspaceName);
-        localStorage.setItem('google_connected', String(googleConnected));
+        localStorage.setItem('workspace_name', companyName);
+        localStorage.setItem('google_connected', String(mailboxConnected));
         localStorage.setItem('onboarding_completed', 'true');
         localStorage.setItem('tour_completed', 'false'); // triggers tour guide
       }
 
       router.push('/app');
     } catch (err) {
-      console.error('Error during onboarding execution:', err);
-      // Ensure we redirect even if DB queries fail
+      console.error('Error during onboarding completion:', err);
       router.push('/app');
     } finally {
       setLoading(false);
@@ -156,7 +145,7 @@ export default function OnboardingPage() {
 
   const formattedDate = () => {
     const d = new Date();
-    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return d.toLocaleDateString('fr-FR', { month: 'short', day: 'numeric', year: 'numeric' });
   };
 
   return (
@@ -170,13 +159,13 @@ export default function OnboardingPage() {
             {/* Header */}
             <div className="text-center mb-6">
               <div className="inline-flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary mb-3">
-                <Sparkles className="h-6 w-6" />
+                <Sparkles className="h-6 w-6 animate-pulse" />
               </div>
               <h2 className="text-2xl font-extrabold tracking-tight text-zinc-900">
                 Faisons connaissance 👋
               </h2>
               <p className="text-sm text-zinc-500 mt-2">
-                Configurez vos informations personnelles pour commencer.
+                Configurez vos informations personnelles pour commencer sur Vectra.
               </p>
             </div>
 
@@ -187,7 +176,7 @@ export default function OnboardingPage() {
                   <Label htmlFor="firstName" className="text-xs font-bold uppercase text-zinc-400">Prénom</Label>
                   <Input 
                     id="firstName"
-                    placeholder="Kael"
+                    placeholder="Alex"
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
                     className="border-zinc-200 focus-visible:ring-primary"
@@ -197,7 +186,7 @@ export default function OnboardingPage() {
                   <Label htmlFor="lastName" className="text-xs font-bold uppercase text-zinc-400">Nom</Label>
                   <Input 
                     id="lastName"
-                    placeholder="Belceus"
+                    placeholder="Dupont"
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
                     className="border-zinc-200 focus-visible:ring-primary"
@@ -265,225 +254,63 @@ export default function OnboardingPage() {
             {/* Header: Logo */}
             <div className="flex items-center gap-2 select-none">
               <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-white font-bold">
-                W
+                V
               </div>
-              <span className="text-lg font-bold tracking-tight text-zinc-900">Wrangle</span>
+              <span className="text-lg font-bold tracking-tight text-zinc-900">Vectra</span>
             </div>
 
             {/* Center Content */}
             <div className="max-w-[460px] w-full mx-auto my-8">
               
-              {/* STEP 1: Connect Google */}
+              {/* STEP 1: Enterprise Profile & Offer */}
               {step === 1 && (
                 <div className="space-y-6 animate-fade-in">
                   <div className="space-y-2">
                     <h2 className="text-2xl font-extrabold tracking-tight text-zinc-900">
-                      Connectez votre compte Google
+                      Profil de votre entreprise
                     </h2>
                     <p className="text-sm text-zinc-500">
-                      Synchronisez vos e-mails pour analyser les conversions et planifier les relances intelligemment.
+                      Définissons qui vous êtes et ce que vous proposez pour orienter les rédactions d'IA.
                     </p>
                   </div>
 
-                  {/* Bullet benefits */}
-                  <div className="space-y-4">
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <Mail className="h-3.5 w-3.5" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-zinc-800">Suivi des e-mails prospects</span>
-                        <p className="text-[11px] text-zinc-400 mt-0.5">Scanne les réponses positives et automatise le scoring d'intérêt.</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <Calendar className="h-3.5 w-3.5" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-zinc-800">Planification des rendez-vous</span>
-                        <p className="text-[11px] text-zinc-400 mt-0.5">Insère des liens d'appel dynamiques synchronisés avec vos disponibilités.</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-start gap-3">
-                      <div className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary">
-                        <Search className="h-3.5 w-3.5" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-zinc-800">Personnalisation contextuelle</span>
-                        <p className="text-[11px] text-zinc-400 mt-0.5">Adapte le contenu en fonction des interactions e-mails passées.</p>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Security shield box */}
-                  <div className="flex items-start gap-3 p-4 rounded-xl border border-zinc-100 bg-zinc-50/50">
-                    <Shield className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
-                    <div>
-                      <span className="text-xs font-bold text-zinc-800">Vos données sont sécurisées</span>
-                      <p className="text-[11px] text-zinc-400 mt-0.5">Wrangle utilise uniquement les permissions minimales requises. Aucun e-mail n'est partagé ou vendu.</p>
-                    </div>
-                  </div>
-
-                  {/* Google sync buttons */}
-                  <div className="pt-4 flex items-center gap-3">
-                    <Button 
-                      variant="outline"
-                      onClick={handlePrevStep}
-                      className="border-zinc-200 h-11 text-xs px-4"
-                    >
-                      <ArrowLeft className="h-4 w-4 mr-2" />
-                      Retour
-                    </Button>
-
-                    <Button
-                      onClick={handleConnectGoogle}
-                      disabled={connectingGoogle || googleConnected}
-                      className={`flex-1 font-bold h-11 text-xs gap-2 ${
-                        googleConnected 
-                          ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-50 border border-emerald-200' 
-                          : 'bg-primary text-white hover:bg-primary/95'
-                      }`}
-                    >
-                      {connectingGoogle ? (
-                        <>
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                          Connexion...
-                        </>
-                      ) : googleConnected ? (
-                        <>
-                          <Check className="h-4 w-4 text-emerald-600" />
-                          Google Synchronisé
-                        </>
-                      ) : (
-                        <>
-                          Synchroniser Google Account
-                        </>
-                      )}
-                    </Button>
-
-                    {!googleConnected && (
-                      <Button
-                        variant="ghost"
-                        onClick={() => setStep(2)}
-                        className="text-zinc-400 hover:text-zinc-600 h-11 text-xs px-3"
-                      >
-                        Passer
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 2: Join or Create Workspace */}
-              {step === 2 && (
-                <div className="space-y-6 animate-fade-in">
-                  <div className="space-y-2">
-                    <h2 className="text-2xl font-extrabold tracking-tight text-zinc-900">
-                      Configuration du Workspace
-                    </h2>
-                    <p className="text-sm text-zinc-500">
-                      Rejoignez un espace existant créé par votre équipe ou lancez une nouvelle organisation.
-                    </p>
-                  </div>
-
-                  {/* Option 1: Join workspace */}
-                  <div className="p-4 rounded-xl border border-zinc-200 bg-zinc-50/50 flex flex-col gap-1">
-                    <span className="text-xs font-bold text-zinc-800">Rejoindre un espace existant</span>
-                    <p className="text-[11px] text-zinc-400">Demandez à un coéquipier de vous envoyer une invitation depuis les paramètres.</p>
-                  </div>
-
-                  {/* Separator */}
-                  <div className="relative flex py-2 items-center">
-                    <div className="flex-grow border-t border-zinc-200"></div>
-                    <span className="flex-shrink mx-4 text-xs font-bold text-zinc-400">OU</span>
-                    <div className="flex-grow border-t border-zinc-200"></div>
-                  </div>
-
-                  {/* Option 2: Create new card */}
-                  <button
-                    onClick={handleNextStep}
-                    className="w-full text-left p-5 rounded-xl border border-primary bg-primary/5 hover:bg-primary/10 transition-all flex items-center justify-between group"
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="h-10 w-10 rounded-lg bg-primary text-white flex items-center justify-center shrink-0">
-                        <Building2 className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <span className="text-xs font-bold text-primary">Créer une nouvelle organisation</span>
-                        <p className="text-[11px] text-zinc-500 mt-0.5">Configurer un espace de travail dédié pour vous et vos collègues.</p>
-                      </div>
-                    </div>
-                    <ChevronRight className="h-5 w-5 text-primary transition-transform group-hover:translate-x-1" />
-                  </button>
-
-                  {/* Actions */}
-                  <div className="pt-4 flex items-center gap-3">
-                    <Button 
-                      variant="outline"
-                      onClick={handlePrevStep}
-                      className="border-zinc-200 h-11 text-xs px-4"
-                    >
-                      <ArrowLeft className="h-4 w-4 mr-2" />
-                      Retour
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* STEP 3: Create Workspace name & slug */}
-              {step === 3 && (
-                <div className="space-y-6 animate-fade-in">
-                  <div className="space-y-2">
-                    <h2 className="text-2xl font-extrabold tracking-tight text-zinc-900">
-                      Configurez votre espace
-                    </h2>
-                    <p className="text-sm text-zinc-500">
-                      Donnez un nom et définissez l'adresse de votre espace de travail.
-                    </p>
-                  </div>
-
-                  {/* Logo uploader */}
-                  <div className="flex items-center gap-4">
-                    <div className="h-16 w-16 rounded-xl border-2 border-dashed border-zinc-300 bg-zinc-50 flex flex-col items-center justify-center shrink-0 text-zinc-400 hover:border-primary hover:text-primary cursor-pointer transition-all">
-                      <Upload className="h-5 w-5" />
-                      <span className="text-[9px] mt-1 font-bold">Upload</span>
-                    </div>
-                    <div>
-                      <span className="text-xs font-bold text-zinc-800">Logo de l'entreprise</span>
-                      <p className="text-[10px] text-zinc-400">Format carré (1:1), 10MB maximum.</p>
-                    </div>
-                  </div>
-
-                  {/* Form */}
                   <div className="space-y-4">
                     <div className="space-y-2">
-                      <Label htmlFor="wsName" className="text-xs font-bold uppercase text-zinc-400">Nom de l'organisation</Label>
+                      <Label htmlFor="compName" className="text-xs font-bold uppercase text-zinc-400">Nom de votre entreprise *</Label>
                       <Input 
-                        id="wsName"
-                        placeholder="Wrangle Inc."
-                        value={workspaceName}
-                        onChange={(e) => setWorkspaceName(e.target.value)}
+                        id="compName"
+                        placeholder="Vectra Corp"
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
                         className="border-zinc-200 focus-visible:ring-primary"
                       />
                     </div>
 
                     <div className="space-y-2">
-                      <Label htmlFor="wsSlug" className="text-xs font-bold uppercase text-zinc-400">URL personnalisée (Slug)</Label>
-                      <div className="flex rounded-md shadow-sm">
-                        <span className="inline-flex items-center px-3 rounded-l-md border border-r-0 border-zinc-200 bg-zinc-50 text-zinc-400 text-xs select-none">
-                          wrangle.ai/
-                        </span>
-                        <Input 
-                          id="wsSlug"
-                          placeholder="wrangle-inc"
-                          value={workspaceSlug}
-                          onChange={(e) => setWorkspaceSlug(e.target.value)}
-                          className="rounded-l-none border-zinc-200 focus-visible:ring-primary flex-1"
-                        />
-                      </div>
+                      <Label htmlFor="busType" className="text-xs font-bold uppercase text-zinc-400">Type d'activité</Label>
+                      <select
+                        id="busType"
+                        value={businessType}
+                        onChange={(e) => setBusinessType(e.target.value)}
+                        className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                      >
+                        <option value="solopreneur">Solopreneur / Freelance</option>
+                        <option value="agency">Petite Agence</option>
+                        <option value="saas">SaaS early-stage</option>
+                        <option value="other">Autre / E-commerce</option>
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label htmlFor="pitch" className="text-xs font-bold uppercase text-zinc-400">Votre offre commerciale (Langage Naturel)</Label>
+                      <Textarea 
+                        id="pitch"
+                        placeholder="Ex: Je crée des landing pages pour les infopreneurs et coachs business B2B..."
+                        rows={4}
+                        value={offerPitch}
+                        onChange={(e) => setOfferPitch(e.target.value)}
+                        className="border-zinc-200 focus-visible:ring-primary text-sm font-normal"
+                      />
                     </div>
                   </div>
 
@@ -491,7 +318,7 @@ export default function OnboardingPage() {
                   <div className="pt-4 flex items-center gap-3">
                     <Button 
                       variant="outline"
-                      onClick={() => setStep(2)}
+                      onClick={handlePrevStep}
                       className="border-zinc-200 h-11 text-xs px-4"
                     >
                       <ArrowLeft className="h-4 w-4 mr-2" />
@@ -500,7 +327,7 @@ export default function OnboardingPage() {
 
                     <Button
                       onClick={handleNextStep}
-                      disabled={!workspaceName}
+                      disabled={!companyName || !offerPitch}
                       className="flex-1 bg-primary text-white hover:bg-primary/95 font-bold h-11 text-xs"
                     >
                       Continuer
@@ -510,53 +337,195 @@ export default function OnboardingPage() {
                 </div>
               )}
 
-              {/* STEP 4: Invite Teammates */}
+              {/* STEP 2: ICP Target Settings */}
+              {step === 2 && (
+                <div className="space-y-6 animate-fade-in">
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-extrabold tracking-tight text-zinc-900">
+                      Définissons votre client idéal (ICP)
+                    </h2>
+                    <p className="text-sm text-zinc-500">
+                      Spécifiez les entreprises et décideurs à cibler pour notre moteur de sourcing IA.
+                    </p>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="icp" className="text-xs font-bold uppercase text-zinc-400">Cible / Rôle recherché *</Label>
+                      <Input 
+                        id="icp"
+                        placeholder="Ex: SaaS Founders B2B"
+                        value={icpTarget}
+                        onChange={(e) => setIcpTarget(e.target.value)}
+                        className="border-zinc-200 focus-visible:ring-primary"
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="icp-loc" className="text-xs font-bold uppercase text-zinc-400">Géographie</Label>
+                        <Input 
+                          id="icp-loc"
+                          placeholder="Canada / France"
+                          value={icpLocation}
+                          onChange={(e) => setIcpLocation(e.target.value)}
+                          className="border-zinc-200 focus-visible:ring-primary"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="icp-hc" className="text-xs font-bold uppercase text-zinc-400">Taille d'équipe</Label>
+                        <select
+                          id="icp-hc"
+                          className="flex h-10 w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+                        >
+                          <option value="1-10">1-10 personnes</option>
+                          <option value="11-50">11-50 personnes</option>
+                          <option value="51-200">51-200 personnes</option>
+                          <option value="200+">Plus de 200 personnes</option>
+                        </select>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="pt-4 flex items-center gap-3">
+                    <Button 
+                      variant="outline"
+                      onClick={handlePrevStep}
+                      className="border-zinc-200 h-11 text-xs px-4"
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Retour
+                    </Button>
+
+                    <Button
+                      onClick={handleNextStep}
+                      disabled={!icpTarget}
+                      className="flex-1 bg-primary text-white hover:bg-primary/95 font-bold h-11 text-xs"
+                    >
+                      Continuer
+                      <ArrowRight className="ml-2 h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 3: Connect Mailbox Simulator */}
+              {step === 3 && (
+                <div className="space-y-6 animate-fade-in">
+                  <div className="space-y-2">
+                    <h2 className="text-2xl font-extrabold tracking-tight text-zinc-900">
+                      Connectez votre boîte mail (Nylas)
+                    </h2>
+                    <p className="text-sm text-zinc-500">
+                      Liez votre messagerie pour planifier, suivre vos e-mails de prospection et gérer les réponses en direct.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <button
+                      onClick={() => handleConnectMailbox('gmail')}
+                      disabled={connectingMailbox}
+                      className="border border-zinc-200 rounded-xl p-4 flex flex-col items-center gap-2 hover:bg-zinc-50 hover:border-primary transition-all duration-200"
+                    >
+                      <Building2 className="h-6 w-6 text-red-500" />
+                      <span className="text-xs font-semibold">Google Workspace</span>
+                    </button>
+                    <button
+                      onClick={() => handleConnectMailbox('outlook')}
+                      disabled={connectingMailbox}
+                      className="border border-zinc-200 rounded-xl p-4 flex flex-col items-center gap-2 hover:bg-zinc-50 hover:border-primary transition-all duration-200"
+                    >
+                      <Mail className="h-6 w-6 text-blue-500" />
+                      <span className="text-xs font-semibold">Outlook</span>
+                    </button>
+                    <button
+                      onClick={() => handleConnectMailbox('icloud')}
+                      disabled={connectingMailbox}
+                      className="border border-zinc-200 rounded-xl p-4 flex flex-col items-center gap-2 hover:bg-zinc-50 hover:border-primary transition-all duration-200"
+                    >
+                      <Globe className="h-6 w-6 text-zinc-700" />
+                      <span className="text-xs font-semibold">iCloud / IMAP</span>
+                    </button>
+                  </div>
+
+                  {connectingMailbox && (
+                    <div className="border border-zinc-100 bg-zinc-50 p-4 rounded-xl flex items-center justify-center gap-3">
+                      <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                      <span className="text-xs text-zinc-600 font-medium">Connexion sécurisée en cours...</span>
+                    </div>
+                  )}
+
+                  {mailboxConnected && (
+                    <div className="border border-emerald-100 bg-emerald-50/50 p-4 rounded-xl flex items-center justify-center gap-3">
+                      <Check className="h-5 w-5 text-emerald-600" />
+                      <span className="text-xs text-emerald-800 font-semibold">Messagerie connectée avec succès !</span>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="pt-4 flex items-center gap-3">
+                    <Button 
+                      variant="outline"
+                      onClick={handlePrevStep}
+                      disabled={connectingMailbox}
+                      className="border-zinc-200 h-11 text-xs px-4"
+                    >
+                      <ArrowLeft className="h-4 w-4 mr-2" />
+                      Retour
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      onClick={() => setStep(4)}
+                      disabled={connectingMailbox}
+                      className="text-zinc-400 hover:text-zinc-600 h-11 text-xs px-3"
+                    >
+                      Passer pour l'instant
+                    </Button>
+                  </div>
+                </div>
+              )}
+
+              {/* STEP 4: Choose Trial plan & Complete */}
               {step === 4 && (
                 <div className="space-y-6 animate-fade-in">
                   <div className="space-y-2">
                     <h2 className="text-2xl font-extrabold tracking-tight text-zinc-900">
-                      Invitez vos collaborateurs
+                      Votre essai d'évaluation Starter 🎁
                     </h2>
                     <p className="text-sm text-zinc-500">
-                      Entrez les e-mails de vos coéquipiers pour qu'ils puissent collaborer dans cet espace.
+                      Activez votre pack de bienvenue gratuit pour commencer à sourcer immédiatement.
                     </p>
                   </div>
 
-                  {/* Form */}
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="emails" className="text-xs font-bold uppercase text-zinc-400">Adresses E-mail (Séparez par des virgules)</Label>
-                      <textarea
-                        id="emails"
-                        placeholder="coeq1@entreprise.com, coeq2@entreprise.com"
-                        value={teammates}
-                        onChange={(e) => setTeammates(e.target.value)}
-                        rows={3}
-                        className="flex w-full rounded-md border border-zinc-200 bg-white px-3 py-2 text-xs focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 dark:border-zinc-800 dark:bg-zinc-950"
-                      />
+                  <div className="border-2 border-primary bg-primary/5 rounded-2xl p-6 relative overflow-hidden">
+                    <div className="absolute top-4 right-4 bg-primary text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full uppercase tracking-wider">
+                      Gratuit
+                    </div>
+                    
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-5 w-5 text-primary fill-primary" />
+                      <span className="text-sm font-extrabold text-primary uppercase tracking-wider">Starter Pack</span>
+                    </div>
+                    
+                    <div className="mt-4 space-y-3">
+                      <div className="flex items-center gap-2 text-xs font-semibold text-zinc-800">
+                        <Check className="h-4 w-4 text-primary" />
+                        <span>2000 crédits de sourcing inclus</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs font-semibold text-zinc-800">
+                        <Check className="h-4 w-4 text-primary" />
+                        <span>IA Copilot de recherche active</span>
+                      </div>
+                      <div className="flex items-center gap-2 text-xs font-semibold text-zinc-800">
+                        <Check className="h-4 w-4 text-primary" />
+                        <span>1 connexion de boîte mail</span>
+                      </div>
                     </div>
 
-                    {/* Auto Domain Join switch */}
-                    <div className="flex items-center justify-between p-4 rounded-xl border border-zinc-100 bg-zinc-50/50">
-                      <div className="space-y-0.5">
-                        <span className="text-xs font-bold text-zinc-800">Autoriser l'accès par domaine</span>
-                        <p className="text-[10px] text-zinc-400">
-                          Permettre à toute personne ayant un e-mail @{email.split('@')[1] || 'entreprise.com'} de rejoindre automatiquement.
-                        </p>
-                      </div>
-                      <button
-                        type="button"
-                        onClick={() => setAllowDomainJoin(!allowDomainJoin)}
-                        className={`relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                          allowDomainJoin ? 'bg-primary' : 'bg-zinc-200'
-                        }`}
-                      >
-                        <span
-                          className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                            allowDomainJoin ? 'translate-x-4' : 'translate-x-0'
-                          }`}
-                        />
-                      </button>
+                    <div className="border-t border-primary/20 mt-5 pt-4 text-[10px] text-zinc-500">
+                      Aucune carte bancaire requise. Vous pourrez passer à un forfait supérieur à tout moment.
                     </div>
                   </div>
 
@@ -584,19 +553,10 @@ export default function OnboardingPage() {
                         </>
                       ) : (
                         <>
-                          Finaliser et Rejoindre
-                          <Check className="ml-2 h-4 w-4" />
+                          Lancer mon essai gratuit
+                          <ArrowRight className="ml-2 h-4 w-4" />
                         </>
                       )}
-                    </Button>
-
-                    <Button
-                      variant="ghost"
-                      onClick={handleComplete}
-                      disabled={loading}
-                      className="text-zinc-400 hover:text-zinc-600 h-11 text-xs px-3"
-                    >
-                      Passer
                     </Button>
                   </div>
                 </div>
@@ -606,7 +566,7 @@ export default function OnboardingPage() {
 
             {/* Footer */}
             <div className="text-[10px] text-zinc-400 text-center">
-              Wrangle &copy; {new Date().getFullYear()} &middot; Privacy &amp; Terms
+              Vectra &copy; {new Date().getFullYear()} &middot; Privacy &amp; Terms
             </div>
 
           </div>
@@ -627,14 +587,14 @@ export default function OnboardingPage() {
               {/* User Block */}
               <div className="flex items-center gap-3 border-b border-zinc-100 pb-4">
                 <div className="h-10 w-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-sm">
-                  {firstName && lastName ? `${firstName[0]}${lastName[0]}`.toUpperCase() : 'KB'}
+                  {firstName && lastName ? `${firstName[0]}${lastName[0]}`.toUpperCase() : 'AD'}
                 </div>
                 <div className="flex-1 min-w-0">
                   <span className="text-xs font-bold text-zinc-800 truncate block">
-                    {firstName && lastName ? `${firstName} ${lastName}` : 'Kael Belceus'}
+                    {firstName && lastName ? `${firstName} ${lastName}` : 'Alex Dupont'}
                   </span>
                   <span className="text-[10px] text-zinc-400 truncate block">
-                    {workspaceName ? workspaceName : 'Wrangle'}
+                    {companyName ? companyName : 'Vectra'}
                   </span>
                 </div>
               </div>
@@ -645,13 +605,13 @@ export default function OnboardingPage() {
                 {/* Check 1 */}
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className={`h-2 w-2 rounded-full ${googleConnected ? 'bg-emerald-500' : 'bg-primary animate-pulse'}`} />
-                    <span className="text-xs font-bold text-zinc-700">Google Integration</span>
+                    <div className={`h-2 w-2 rounded-full ${step >= 1 ? 'bg-emerald-500' : 'bg-primary animate-pulse'}`} />
+                    <span className="text-xs font-bold text-zinc-700">Profil Commercial</span>
                   </div>
                   <span className={`text-[10px] font-bold ${
-                    googleConnected ? 'text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded' : 'text-primary bg-primary/5 px-2 py-0.5 rounded'
+                    step >= 1 ? 'text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded' : 'text-primary bg-primary/5 px-2 py-0.5 rounded'
                   }`}>
-                    {googleConnected ? 'Connected' : 'Awaiting permission...'}
+                    {step >= 1 ? 'Configure' : 'En cours...'}
                   </span>
                 </div>
 
@@ -659,18 +619,18 @@ export default function OnboardingPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className={`h-2 w-2 rounded-full ${
-                      step >= 4 ? 'bg-emerald-500' : step >= 2 ? 'bg-amber-500 animate-pulse' : 'bg-zinc-300'
+                      step >= 3 ? 'bg-emerald-500' : step === 2 ? 'bg-amber-500 animate-pulse' : 'bg-zinc-300'
                     }`} />
-                    <span className="text-xs font-bold text-zinc-700">Workspace Setup</span>
+                    <span className="text-xs font-bold text-zinc-700">Cible (ICP)</span>
                   </div>
                   <span className={`text-[10px] font-bold ${
-                    step >= 4 
+                    step >= 3 
                       ? 'text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded' 
-                      : step >= 2 
+                      : step === 2 
                         ? 'text-amber-600 bg-amber-50 px-2 py-0.5 rounded' 
                         : 'text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded'
                   }`}>
-                    {step >= 4 ? 'Completed' : step >= 2 ? 'Setting up...' : 'Not started'}
+                    {step >= 3 ? 'Configure' : step === 2 ? 'En cours...' : 'Non commence'}
                   </span>
                 </div>
 
@@ -678,35 +638,35 @@ export default function OnboardingPage() {
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <div className={`h-2 w-2 rounded-full ${
-                      step === 4 && teammates ? 'bg-emerald-500' : step === 4 ? 'bg-amber-500 animate-pulse' : 'bg-zinc-300'
+                      mailboxConnected ? 'bg-emerald-500' : step === 3 ? 'bg-amber-500 animate-pulse' : 'bg-zinc-300'
                     }`} />
-                    <span className="text-xs font-bold text-zinc-700">Invite Teammates</span>
+                    <span className="text-xs font-bold text-zinc-700">Messagerie</span>
                   </div>
                   <span className={`text-[10px] font-bold ${
-                    step === 4 && teammates
+                    mailboxConnected
                       ? 'text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded' 
-                      : step === 4 
+                      : step === 3 
                         ? 'text-amber-600 bg-amber-50 px-2 py-0.5 rounded' 
                         : 'text-zinc-400 bg-zinc-100 px-2 py-0.5 rounded'
                   }`}>
-                    {step === 4 && teammates ? 'Completed' : step === 4 ? 'Inviting...' : 'Not started'}
+                    {mailboxConnected ? 'Connecte' : step === 3 ? 'En cours...' : 'Non commence'}
                   </span>
                 </div>
 
               </div>
 
               {/* Card Footer info */}
-              {workspaceSlug && (
+              {companyName && (
                 <div className="mt-2 pt-3 border-t border-zinc-100 text-[10px] text-zinc-400 flex items-center justify-between">
-                  <span>URL Espace :</span>
-                  <span className="font-mono text-zinc-600 truncate max-w-[160px]">wrangle.ai/{workspaceSlug}</span>
+                  <span>Organisation :</span>
+                  <span className="font-mono text-zinc-600 truncate max-w-[160px]">{companyName}</span>
                 </div>
               )}
             </div>
 
             {/* Footer logo & date */}
             <div className="flex items-center justify-between text-[10px] text-zinc-400 select-none">
-              <span className="font-bold">Wrangle Portal</span>
+              <span className="font-bold">Portail Vectra</span>
               <span>{formattedDate()}</span>
             </div>
 

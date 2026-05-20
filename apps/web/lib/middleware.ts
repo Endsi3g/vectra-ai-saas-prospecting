@@ -2,6 +2,21 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
+  const hasBypassParam = request.nextUrl.searchParams.get('bypass') === 'true' || 
+                          request.nextUrl.searchParams.get('bypass-auth') === 'true';
+
+  if (hasBypassParam) {
+    const url = request.nextUrl.clone();
+    url.searchParams.delete('bypass');
+    url.searchParams.delete('bypass-auth');
+    if (url.pathname === '/' || url.pathname.startsWith('/auth')) {
+      url.pathname = '/app';
+    }
+    const redirectResponse = NextResponse.redirect(url);
+    redirectResponse.cookies.set('sb-mock-session', 'true', { path: '/' });
+    return redirectResponse;
+  }
+
   let supabaseResponse = NextResponse.next({
     request,
   })

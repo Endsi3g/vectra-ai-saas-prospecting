@@ -170,11 +170,32 @@ Vectra now includes high-fidelity interactive modules that compose the core SaaS
 - **Weekly Activity Chart**: An interactive bar chart comparing outgoing campaigns vs incoming replies.
 - **Campaign Comparison**: A tabular comparative matrix auditing fit rate, open rate, reply rate, and meetings booked across active campaigns.
 
+### d) Follow-up Tracker & Pipeline Alerting (`/app/followup`)
+- **Pipeline Overview & Quick Adding**: Displays active outbound threads, last contact date, next planned touchpoint, and dynamic CRM stage badges. A slide-over panel allows quick creation of new manual follow-up entries.
+- **Overdue Alerting System**: Automatically compares current date with the scheduled `follow_up_date` and renders a prominent, highly styled **"En retard" (Overdue)** warning badge on high-priority prospects.
+- **Quick Status Modifications**: In-line select fields to rapidly change statuses (*Pas de réponse*, *Relance 1*, *Meeting pris*, *Deal conclu*) with automated DB-sync triggers and dynamic row coloring.
+
+### e) Cold Calling AI Simulator & objection trainer (`/app/training`)
+- **Multi-Persona Selection**: Recreates distinct realistic buyer types:
+  - *Le CEO Pressé* (demands absolute immediate value and short calls).
+  - *Le CTO Sceptique* (raises data privacy questions, stack compatibility concerns).
+  - *Le RH sans Budget* (bureaucratic issues, corporate approvals).
+- **Difficulty Settings & Tone Adapters**: Easy (complaisant), Medium (realistic objections), and Hard (continuous objections).
+- **Interactive Call Simulator**: Sleek dark-mode header showing live call status, simulated typewriter delay, active typing indicators, and a message thread structure.
+- **Performance Evaluation Matrix**: Renders a post-simulation visual summary measuring critical sales metrics (e.g. *Listening Score*, *Persuasion Score*) using standard numerical indices. Fires PostHog event logs (`training_simulation_started`, `training_simulation_ended`).
+
+### f) Sourcing Optimization & Export Operations
+- **AI Match Score Badges**: Leads are automatically labeled with highly visual badging (*Fit: High*, *Fit: Medium*, *Fit: Low*) computed via cognitive analysis criteria.
+- **Pagination & Load More**: CRM library lists handle massive lead databases using non-blocking, smooth scroll/click pagination load states.
+- **Sentiment Profiling Filters**: Incoming inbox messages are grouped using semantic analysis tags (*Intéressés*, *Objections*, *Désabonnés*).
+- **Analytics CSV/XLSX Export**: Full-funnel campaign data and lead reports are exportable for external review in CSV format.
+
 ---
 
 ## 5. Next Steps & Post-Phase 10 Roadmap
 
-With the complete SaaS stack (Sentry, PostHog, Resend, Stripe, and Secure Middleware), Wrangle integrations, and the 3 new premium pages fully implemented, buildable, and E2E verified:
+With the complete SaaS stack (Sentry, PostHog, Resend, Stripe, and Secure Middleware), Wrangle integrations, and the 5 new premium pages fully implemented, buildable, and E2E verified:
 1. **Remove Local Mocks in Production Environment**: In the deployment staging workspace, swap out mock parameters to utilize active Stripe checkout links, live email deliveries, and real database triggers.
 2. **Production Database Seeding**: Initialize schema and triggers on the live Supabase instance.
 3. **Advanced AI Scoring Extensions**: Refine matching prompt algorithms inside `/api/generate` to scale with specialized tech title ICPs.
+
