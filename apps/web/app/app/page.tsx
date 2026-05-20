@@ -83,36 +83,36 @@ export default function DashboardPage() {
       value: totalLists.toLocaleString(),
       description: 'Lead Folders',
       icon: Folder,
-      color: 'text-emerald-600',
-      bgColor: 'bg-emerald-50',
-      borderColor: 'border-emerald-100'
+      color: 'text-primary',
+      bgColor: 'bg-primary/8',
+      borderColor: 'border-primary/15'
     },
     {
       title: 'Candidates Saved',
       value: candidatesSaved.toLocaleString(),
       description: 'Qualified Targets',
       icon: UserCheck,
-      color: 'text-blue-600',
-      bgColor: 'bg-blue-50',
-      borderColor: 'border-blue-100'
+      color: 'text-foreground',
+      bgColor: 'bg-muted',
+      borderColor: 'border-border'
     },
     {
       title: 'Total Searches',
       value: totalSearches.toLocaleString(),
       description: 'AI Sourcing Runs',
       icon: Search,
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-50',
-      borderColor: 'border-purple-100'
+      color: 'text-foreground',
+      bgColor: 'bg-muted',
+      borderColor: 'border-border'
     },
     {
       title: 'Candidates Outreached',
       value: candidatesOutreached.toLocaleString(),
       description: 'Campaigns Contacted',
       icon: Mail,
-      color: 'text-rose-600',
-      bgColor: 'bg-rose-50',
-      borderColor: 'border-rose-100'
+      color: 'text-foreground',
+      bgColor: 'bg-muted',
+      borderColor: 'border-border'
     }
   ];
 
@@ -139,14 +139,14 @@ export default function DashboardPage() {
     <div className="flex-grow flex flex-col overflow-hidden bg-white text-zinc-950 font-sans">
       
       {/* Starter Trial Warning Banner */}
-      <div className="bg-amber-50 border-b border-amber-200/60 px-6 py-2.5 flex items-center justify-between text-xs text-amber-800 select-none">
+      <div className="bg-amber-50/70 border-b border-amber-200/50 px-6 py-2 flex items-center justify-between text-xs text-amber-700 select-none">
         <div className="flex items-center gap-2">
-          <AlertCircle className="h-4 w-4 text-amber-600 shrink-0" />
+          <AlertCircle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
           <span>You have <strong className="font-extrabold">5 more searches</strong> left on your Starter trial.</span>
         </div>
-        <button 
+        <button
           onClick={() => router.push('/app/settings')}
-          className="text-[11px] font-extrabold text-amber-900 underline hover:text-amber-950 transition-colors"
+          className="text-xs font-bold text-amber-700 underline hover:text-amber-900 transition-colors"
         >
           Explore plans &rarr;
         </button>
@@ -169,7 +169,7 @@ export default function DashboardPage() {
       </header>
 
       {/* Scrollable Dashboard Body */}
-      <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-[#FAFAFA]">
+      <div className="flex-1 overflow-y-auto p-8 space-y-8 bg-zinc-50">
         
         {/* Welcome Section */}
         <div className="space-y-1 select-none">
@@ -196,7 +196,7 @@ export default function DashboardPage() {
                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
                       <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                     </span>
-                    <Badge variant="secondary" className="text-[9px] bg-emerald-50 text-emerald-800 border-none px-1.5 h-4">
+                    <Badge variant="secondary" className="text-xs bg-emerald-50 text-emerald-800 border-none px-1.5 h-4">
                       Sourcing Active
                     </Badge>
                   </div>
@@ -216,12 +216,12 @@ export default function DashboardPage() {
           {stats.map((stat, idx) => {
             const Icon = stat.icon;
             return (
-              <Card key={idx} className="border-zinc-200 shadow-sm bg-white select-none">
+              <Card key={idx} className={`shadow-none bg-white select-none animate-fade-up stagger-${idx + 1}`}>
                 <CardContent className="p-5 flex items-center justify-between gap-4">
                   <div className="space-y-1.5">
                     <span className="text-xs font-bold text-zinc-400 block uppercase tracking-wider">{stat.title}</span>
                     <span className="text-2xl font-extrabold text-zinc-900 block leading-none">{stat.value}</span>
-                    <span className="text-[10px] text-zinc-400 block">{stat.description}</span>
+                    <span className="text-xs text-zinc-400 block">{stat.description}</span>
                   </div>
                   <div className={`h-11 w-11 rounded-xl ${stat.bgColor} ${stat.color} flex items-center justify-center shrink-0 border ${stat.borderColor}`}>
                     <Icon className="h-5 w-5" />
@@ -291,7 +291,7 @@ export default function DashboardPage() {
               {/* Header metrics info */}
               <div className="flex items-start justify-between select-none">
                 <div className="space-y-1">
-                  <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Total Profiles Parsed</span>
+                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">Total Profiles Parsed</span>
                   <div className="flex items-baseline gap-2">
                     <span className="text-2xl font-extrabold text-zinc-900">
                       {chartRange === 'daily' ? '148' : '1,980'}
@@ -309,15 +309,15 @@ export default function DashboardPage() {
                 <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-full overflow-visible">
                   
                   {/* Grid Lines */}
-                  <line x1="0" y1="0" x2={chartWidth} y2="0" stroke="#f1f1f5" strokeWidth="1" strokeDasharray="3" />
-                  <line x1="0" y1={chartHeight / 2} x2={chartWidth} y2={chartHeight / 2} stroke="#f1f1f5" strokeWidth="1" strokeDasharray="3" />
-                  <line x1="0" y1={chartHeight} x2={chartWidth} y2={chartHeight} stroke="#e4e4e7" strokeWidth="1.5" />
+                  <line x1="0" y1="0" x2={chartWidth} y2="0" stroke="var(--border)" strokeWidth="1" strokeDasharray="3" />
+                  <line x1="0" y1={chartHeight / 2} x2={chartWidth} y2={chartHeight / 2} stroke="var(--border)" strokeWidth="1" strokeDasharray="3" />
+                  <line x1="0" y1={chartHeight} x2={chartWidth} y2={chartHeight} stroke="var(--border)" strokeWidth="1.5" />
 
                   {/* Gradient Area Fill under line */}
                   <defs>
                     <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="#10B981" stopOpacity="0.18" />
-                      <stop offset="100%" stopColor="#10B981" stopOpacity="0.0" />
+                      <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.15" />
+                      <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
                     </linearGradient>
                   </defs>
                   <polygon points={areaPath} fill="url(#chartGradient)" />
@@ -325,7 +325,7 @@ export default function DashboardPage() {
                   {/* SVG Stroke Line */}
                   <polyline
                     fill="none"
-                    stroke="#10B981"
+                    stroke="var(--primary)"
                     strokeWidth="2.5"
                     points={pointsString}
                   />
@@ -335,15 +335,26 @@ export default function DashboardPage() {
                     const x = (idx / (activePoints.length - 1)) * chartWidth;
                     const y = chartHeight - (val / maxVal) * chartHeight;
                     return (
-                      <circle
-                        key={idx}
-                        cx={x}
-                        cy={y}
-                        r="3.5"
-                        className="fill-white stroke-primary stroke-[2.5px] cursor-pointer hover:r-5 transition-all"
-                      >
+                      <g key={idx} className="cursor-pointer group/dot">
+                        <circle
+                          cx={x}
+                          cy={y}
+                          r="7"
+                          fill="var(--primary)"
+                          fillOpacity="0"
+                          style={{ transition: 'fill-opacity 150ms ease-out' }}
+                          className="group-hover/dot:fill-opacity-[0.12]"
+                        />
+                        <circle
+                          cx={x}
+                          cy={y}
+                          r="3.5"
+                          fill="white"
+                          stroke="var(--primary)"
+                          strokeWidth="2.5"
+                        />
                         <title>{`Added: ${val}`}</title>
-                      </circle>
+                      </g>
                     );
                   })}
 
@@ -351,7 +362,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Chart Footer Dates label */}
-              <div className="flex justify-between items-center text-[9px] text-zinc-400 font-bold uppercase select-none mt-2">
+              <div className="flex justify-between items-center text-[10px] text-zinc-400 font-bold uppercase select-none mt-2">
                 {chartRange === 'daily' ? (
                   <>
                     <span>Mon</span>

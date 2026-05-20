@@ -199,7 +199,7 @@ export default function PlansPage() {
         </div>
 
         {/* Vectra Experts bottom banner */}
-        <div className="border border-zinc-200 rounded-2xl p-6 bg-[#FAFAFA]/50 max-w-4xl space-y-4 select-none">
+        <div className="border border-zinc-200 rounded-2xl p-6 bg-zinc-50/50 max-w-4xl space-y-4 select-none">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div className="space-y-1">
               <div className="flex items-center gap-2">

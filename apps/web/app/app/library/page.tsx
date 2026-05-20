@@ -221,7 +221,7 @@ export default function LibraryPage() {
       </header>
 
       {/* Main split window content */}
-      <div className="flex-1 flex overflow-hidden bg-[#FAFAFA]">
+      <div className="flex-1 flex overflow-hidden bg-zinc-50">
         
         {/* Left Side: Networks list, Connected Accounts, Members Table, and Leads Table */}
         <div className="flex-grow overflow-y-auto p-8 space-y-6">

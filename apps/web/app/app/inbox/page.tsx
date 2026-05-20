@@ -254,7 +254,7 @@ export default function InboxPage() {
 
       {/* Empty state when no conversations yet */}
       {!loadingConversations && conversations.length === 0 && (
-        <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-[#FAFAFA]">
+        <div className="flex-1 flex flex-col items-center justify-center text-center p-8 bg-zinc-50">
           <div className="h-14 w-14 rounded-2xl bg-zinc-100 flex items-center justify-center mb-4">
             <MessageSquare className="h-7 w-7 text-zinc-400" />
           </div>
@@ -273,7 +273,7 @@ export default function InboxPage() {
 
       {/* Main Inbox Workspace (3 Panes Split view) */}
       {(loadingConversations || conversations.length > 0) && (
-      <div className="flex-1 flex overflow-hidden bg-[#FAFAFA]">
+      <div className="flex-1 flex overflow-hidden bg-zinc-50">
         
         {/* Volet 1 : Conversations List (Left Pane) */}
         <div className="w-80 border-r border-zinc-200 bg-white flex flex-col shrink-0 h-full">
@@ -428,7 +428,7 @@ export default function InboxPage() {
                   value={replyText}
                   onChange={(e) => setReplyText(e.target.value)}
                   rows={4}
-                  className="w-full text-xs border-zinc-200 focus-visible:ring-primary resize-none placeholder-zinc-400 bg-[#FAFAFA] pr-12 pt-3 pb-3 rounded-xl leading-relaxed"
+                  className="w-full text-xs border-zinc-200 focus-visible:ring-primary resize-none placeholder-zinc-400 bg-zinc-50 pr-12 pt-3 pb-3 rounded-xl leading-relaxed"
                 />
                 
                 {/* Send Button overlay inside input */}

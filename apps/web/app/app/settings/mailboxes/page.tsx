@@ -289,7 +289,7 @@ export default function MailboxesPage() {
         ) : mailboxes.length === 0 ? (
           
           /* Empty Active State screen */
-          <div className="border border-zinc-200 border-dashed rounded-2xl p-10 bg-[#FAFAFA]/40 flex flex-col items-center justify-center text-center gap-4">
+          <div className="border border-zinc-200 border-dashed rounded-2xl p-10 bg-zinc-50/40 flex flex-col items-center justify-center text-center gap-4">
             <div className="h-12 w-12 rounded-full bg-zinc-100 border border-zinc-200 flex items-center justify-center text-zinc-400">
               <Mail className="h-5 w-5" />
             </div>

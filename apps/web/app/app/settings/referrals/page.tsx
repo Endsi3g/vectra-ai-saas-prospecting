@@ -52,7 +52,7 @@ export default function ReferralsPage() {
           </div>
 
           {/* Card 2: Stats */}
-          <div className="border border-zinc-250 rounded-2xl p-6 bg-[#FAFAFA]/50 space-y-4 flex flex-col justify-between">
+          <div className="border border-zinc-250 rounded-2xl p-6 bg-zinc-50/50 space-y-4 flex flex-col justify-between">
             <div className="space-y-1">
               <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-wider">Total Earnings</span>
               <div className="text-3xl font-extrabold text-zinc-900">0</div>

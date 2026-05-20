@@ -301,11 +301,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-50 select-none text-zinc-950 font-sans">
         {/* Top green trial banner */}
-        <div className="h-9 w-full flex items-center justify-center bg-[#E6F7ED] text-[#227A4B] text-[11px] font-semibold border-b border-[#D0EFE0] shrink-0 select-none">
+        <div className="h-9 w-full flex items-center justify-center bg-primary/5 text-primary text-xs font-semibold border-b border-primary/15 shrink-0 select-none">
           <span className="flex items-center gap-1.5">
-            <span className="inline-block h-3.5 w-3.5 rounded bg-[#227A4B]/10 flex items-center justify-center font-bold text-[8px]">88</span>
             <span>You have 5 more searches on your Starter trial.</span>
-            <Link href="/app/settings/plans" className="underline font-bold hover:text-[#185834] ml-1">Explore plans</Link>
+            <Link href="/app/settings/plans" className="underline font-bold hover:opacity-80 ml-1">Explore plans</Link>
           </span>
         </div>
 
@@ -408,7 +407,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 type="text"
                 placeholder="New search"
                 readOnly
-                className="w-full h-8 rounded-lg border border-zinc-200 bg-[#FAFAFA] pl-8 pr-10 text-[11px] text-zinc-500 placeholder-zinc-400 focus-visible:outline-none cursor-pointer hover:bg-zinc-100/50 transition-all"
+                className="w-full h-8 rounded-lg border border-zinc-200 bg-zinc-50 pl-8 pr-10 text-xs text-zinc-500 placeholder-zinc-400 focus-visible:outline-none cursor-pointer hover:bg-zinc-100/50 transition-all"
               />
               <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-zinc-400" />
               <div className="absolute right-2 top-1.5 flex gap-0.5 items-center select-none text-[8px] font-bold text-zinc-400 bg-zinc-200/50 px-1 py-0.5 rounded">
@@ -418,7 +417,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
 
             {/* Quick action button */}
-            <button className="w-full h-8 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 flex items-center justify-between px-3 text-[11px] text-zinc-600 font-bold transition-all shadow-sm">
+            <button className="w-full h-8 rounded-lg border border-zinc-200 bg-white hover:bg-zinc-50 flex items-center justify-between px-3 text-xs text-zinc-600 font-bold transition-all shadow-sm">
               <span className="flex items-center gap-2">
                 <Search className="h-3.5 w-3.5 text-zinc-400 animate-pulse" />
                 <span>Search</span>
@@ -475,16 +474,16 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       <Link
                         key={col.id}
                         href={`/app/library?collection=${col.id}`}
-                        className={`group flex items-center justify-between rounded-lg px-3 py-1.5 text-[11px] font-medium transition-all ${
+                        className={`group flex items-center justify-between rounded-lg px-3 py-1.5 text-xs font-medium transition-all ${
                           isActive
-                            ? 'bg-[#E6F7ED] text-[#227A4B] font-bold'
+                            ? 'bg-primary/8 text-primary font-bold'
                             : 'text-zinc-600 hover:bg-zinc-50 hover:text-zinc-950'
                         }`}
                       >
                         <span className="truncate max-w-[130px]">{col.name}</span>
-                        <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold shrink-0 transition-colors ${
+                        <span className={`rounded-full px-1.5 py-0.5 text-[10px] font-bold shrink-0 transition-colors ${
                           isActive
-                            ? 'bg-[#227A4B]/20 text-[#227A4B]'
+                            ? 'bg-primary/15 text-primary'
                             : 'bg-zinc-100 text-zinc-500 group-hover:bg-zinc-200'
                         }`}>
                           {col.count}
@@ -499,23 +498,23 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </nav>
 
         {/* Bottom Widgets & Account Section */}
-        <div className="p-3 border-t border-zinc-100 space-y-3 bg-[#FAFAFA]/50 shrink-0">
-          
+        <div className="p-3 border-t border-zinc-100 space-y-3 bg-zinc-50/50 shrink-0">
+
           {/* Monthly Credits Balance widget */}
           {!isCollapsed && (
             <div className={`flex items-center justify-between text-xs px-2 select-none border border-transparent transition-all duration-500 rounded-lg ${
-              creditsFlash 
-                ? 'bg-emerald-50 border-emerald-200 text-emerald-800 scale-102 py-1.5 shadow-sm' 
+              creditsFlash
+                ? 'bg-primary/5 border-primary/20 text-primary scale-[1.02] py-1.5 shadow-sm'
                 : 'border-b border-zinc-100 pb-2'
             }`}>
               <div className="flex items-center gap-2 text-zinc-500 font-medium">
                 <Coins className={`h-4 w-4 shrink-0 transition-all duration-300 ${
-                  creditsFlash ? 'text-emerald-500 scale-125 animate-bounce' : 'text-amber-500'
+                  creditsFlash ? 'text-primary scale-110' : 'text-amber-500'
                 }`} />
-                <span className={creditsFlash ? 'text-emerald-800 font-bold' : ''}>Monthly Credits</span>
+                <span className={creditsFlash ? 'text-primary font-bold' : ''}>Monthly Credits</span>
               </div>
               <span className={`font-extrabold transition-all duration-300 ${
-                creditsFlash ? 'text-emerald-600 scale-110 text-sm' : 'text-zinc-800'
+                creditsFlash ? 'text-primary scale-105 text-sm' : 'text-zinc-800'
               }`}>
                 {creditsCount.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ",")}
               </span>
@@ -532,7 +531,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <div className="w-full bg-zinc-100 rounded-full h-1.5">
                 <div className="bg-primary h-1.5 rounded-full w-[80%]" />
               </div>
-              <p className="text-[9px] text-zinc-400 leading-normal">
+              <p className="text-[10px] text-zinc-400 leading-normal">
                 Upgrade to scale campaigns and unlock unlimited credits.
               </p>
             </div>
@@ -552,7 +551,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               className="w-full flex items-center justify-between rounded-xl p-1.5 text-left hover:bg-zinc-100/80 transition-colors"
             >
               <div className="flex items-center gap-2.5 min-w-0">
-                <div className="h-8 w-8 rounded-full bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-xs shrink-0 select-none">
+                <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-xs shrink-0 select-none">
                   {userEmail ? userEmail.slice(0, 2).toUpperCase() : 'KB'}
                 </div>
                 {!isCollapsed && (

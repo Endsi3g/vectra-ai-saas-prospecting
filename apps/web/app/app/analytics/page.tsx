@@ -397,7 +397,7 @@ export default function AnalyticsPage() {
       </header>
 
       {/* Main scrollable body workspace */}
-      <div className="flex-1 overflow-y-auto bg-[#FAFAFA] p-6 space-y-6">
+      <div className="flex-1 overflow-y-auto bg-zinc-50 p-6 space-y-6">
         
         {/* Row 1: KPI Stat Cards Grid */}
         <div className={`grid gap-4 grid-cols-2 lg:grid-cols-4 max-w-5xl transition-all duration-300 ${
@@ -613,7 +613,7 @@ export default function AnalyticsPage() {
 
           <CardContent className="p-0 border-t border-zinc-100 overflow-x-auto">
             <table className="w-full text-left text-xs min-w-[600px]">
-              <thead className="bg-[#FAFAFA] border-b border-zinc-100 text-[10px] font-bold text-zinc-400 uppercase tracking-wider select-none">
+              <thead className="bg-zinc-50 border-b border-zinc-100 text-[10px] font-bold text-zinc-400 uppercase tracking-wider select-none">
                 <tr>
                   <th className="py-3 px-6">Nom de la Campagne</th>
                   <th className="py-3 px-6 text-center">Score d'Adequation Moyen</th>

@@ -141,7 +141,7 @@ export default function TrainingPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col h-full overflow-hidden bg-[#FAFAFA] text-zinc-950 font-sans">
+    <div className="flex-1 flex flex-col h-full overflow-hidden bg-zinc-50 text-zinc-950 font-sans">
       {/* Header */}
       <header className="flex h-16 shrink-0 items-center justify-between border-b border-zinc-200 bg-white px-6">
         <div className="flex items-center gap-2 text-sm text-zinc-500 select-none">

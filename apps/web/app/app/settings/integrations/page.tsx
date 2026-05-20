@@ -128,7 +128,7 @@ export default function IntegrationsPage() {
         <div className="space-y-4 pt-4">
           <h2 className="text-sm font-bold text-zinc-800 uppercase tracking-wider">Slack App</h2>
           
-          <div className="border border-zinc-200 rounded-2xl p-6 bg-[#FAFAFA]/30 max-w-3xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 select-none">
+          <div className="border border-zinc-200 rounded-2xl p-6 bg-zinc-50/30 max-w-3xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 select-none">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 bg-zinc-100 rounded-xl flex items-center justify-center shrink-0 border border-zinc-150">
                 <svg className="h-5 w-5 text-zinc-700" viewBox="0 0 24 24" fill="currentColor">

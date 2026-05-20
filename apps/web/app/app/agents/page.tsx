@@ -242,7 +242,7 @@ export default function AgentsPage() {
       </header>
 
       {/* Main configuration workspace */}
-      <div className="flex-1 overflow-y-auto bg-[#FAFAFA] p-6 space-y-6 pb-20">
+      <div className="flex-1 overflow-y-auto bg-zinc-50 p-6 space-y-6 pb-20">
         
         {/* Top Info Banner */}
         <div className="max-w-5xl bg-zinc-50 border border-zinc-200 p-5 rounded-xl flex gap-3.5 items-start">
@@ -299,7 +299,7 @@ export default function AgentsPage() {
                 </button>
               </CardHeader>
               
-              <CardContent className="text-[11px] text-zinc-500 border-t border-zinc-100 bg-[#FAFAFA]/50 p-4 space-y-2">
+              <CardContent className="text-[11px] text-zinc-500 border-t border-zinc-100 bg-zinc-50/50 p-4 space-y-2">
                 <div className="flex justify-between items-center">
                   <span>Source ciblée :</span>
                   <span className="font-semibold text-zinc-700">LinkedIn Graph API &amp; Google Maps API</span>
@@ -345,7 +345,7 @@ export default function AgentsPage() {
                 </button>
               </CardHeader>
               
-              <CardContent className="text-[11px] text-zinc-500 border-t border-zinc-100 bg-[#FAFAFA]/50 p-4 space-y-2">
+              <CardContent className="text-[11px] text-zinc-500 border-t border-zinc-100 bg-zinc-50/50 p-4 space-y-2">
                 <div className="flex justify-between items-center">
                   <span>Modèle LLM de rédaction :</span>
                   <span className="font-semibold text-zinc-700">GPT-4.1 Nano Plus (Outbound Optimized)</span>
@@ -391,7 +391,7 @@ export default function AgentsPage() {
                 </button>
               </CardHeader>
               
-              <CardContent className="text-[11px] text-zinc-500 border-t border-zinc-100 bg-[#FAFAFA]/50 p-4 space-y-2">
+              <CardContent className="text-[11px] text-zinc-500 border-t border-zinc-100 bg-zinc-50/50 p-4 space-y-2">
                 <div className="flex justify-between items-center">
                   <span>Fréquence d'actualisation :</span>
                   <span className="font-semibold text-zinc-700">Toutes les 24h</span>
@@ -417,7 +417,7 @@ export default function AgentsPage() {
                 <select
                   value={selectedCampaignId}
                   onChange={(e) => setSelectedCampaignId(e.target.value)}
-                  className="w-full h-9 rounded-lg border border-zinc-200 bg-[#FAFAFA] text-xs font-medium px-3 focus-visible:outline-none"
+                  className="w-full h-9 rounded-lg border border-zinc-200 bg-zinc-50 text-xs font-medium px-3 focus-visible:outline-none"
                 >
                   {campaigns.map((camp) => (
                     <option key={camp.id} value={camp.id}>
@@ -452,7 +452,7 @@ export default function AgentsPage() {
                 <select
                   value={maxLeadsLimit.toString()}
                   onChange={(e) => setMaxLeadsLimit(parseInt(e.target.value))}
-                  className="w-full h-9 rounded-lg border border-zinc-200 bg-[#FAFAFA] text-xs font-medium px-3 focus-visible:outline-none"
+                  className="w-full h-9 rounded-lg border border-zinc-200 bg-zinc-50 text-xs font-medium px-3 focus-visible:outline-none"
                 >
                   <option value="10">Max 10 leads / jour</option>
                   <option value="20">Max 20 leads / jour</option>
@@ -467,7 +467,7 @@ export default function AgentsPage() {
                 <select
                   value={frequency}
                   onChange={(e) => setFrequency(e.target.value as any)}
-                  className="w-full h-9 rounded-lg border border-zinc-200 bg-[#FAFAFA] text-xs font-medium px-3 focus-visible:outline-none"
+                  className="w-full h-9 rounded-lg border border-zinc-200 bg-zinc-50 text-xs font-medium px-3 focus-visible:outline-none"
                 >
                   <option value="daily">Quotidienne (Tous les matins à 8h)</option>
                   <option value="weekly">Hebdomadaire (Tous les Lundis)</option>
@@ -481,7 +481,7 @@ export default function AgentsPage() {
                 <select
                   value={outreachLanguage}
                   onChange={(e) => setOutreachLanguage(e.target.value as any)}
-                  className="w-full h-9 rounded-lg border border-zinc-200 bg-[#FAFAFA] text-xs font-medium px-3 focus-visible:outline-none"
+                  className="w-full h-9 rounded-lg border border-zinc-200 bg-zinc-50 text-xs font-medium px-3 focus-visible:outline-none"
                 >
                   <option value="bilingual">Bilingue (Français et Anglais)</option>
                   <option value="fr">Français uniquement</option>
@@ -495,7 +495,7 @@ export default function AgentsPage() {
                 <select
                   value={defaultTone}
                   onChange={(e) => setDefaultTone(e.target.value as any)}
-                  className="w-full h-9 rounded-lg border border-zinc-200 bg-[#FAFAFA] text-xs font-medium px-3 focus-visible:outline-none"
+                  className="w-full h-9 rounded-lg border border-zinc-200 bg-zinc-50 text-xs font-medium px-3 focus-visible:outline-none"
                 >
                   <option value="professional">Professionnelle (Constructive &amp; Polie)</option>
                   <option value="casual">Directe (Courte &amp; Dynamique)</option>

@@ -149,7 +149,7 @@ export default function OnboardingPage() {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#FAFAFA] text-zinc-950 font-sans select-none">
+    <div className="flex min-h-screen bg-zinc-50 text-zinc-950 font-sans select-none">
       
       {/* STEP 0: Centered single column welcome layout */}
       {step === 0 ? (
@@ -572,7 +572,7 @@ export default function OnboardingPage() {
           </div>
 
           {/* RIGHT PANEL: Status info tracker */}
-          <div className="w-[45%] flex flex-col justify-between p-12 bg-[#F9F9FB] border-l border-zinc-200">
+          <div className="w-[45%] flex flex-col justify-between p-12 bg-zinc-50/80 border-l border-zinc-200">
             
             {/* Top counter */}
             <div className="flex justify-end select-none">
