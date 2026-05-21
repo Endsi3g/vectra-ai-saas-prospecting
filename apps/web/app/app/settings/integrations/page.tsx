@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@workspace/ui/components/button';
-import { Check, ArrowRight, Loader2, Layers } from 'lucide-react';
+import { Check, ArrowRight, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 interface Integration {
   id: string;
@@ -12,77 +13,88 @@ interface Integration {
   connected: boolean;
 }
 
-export default function IntegrationsPage() {
-  const [integrations, setIntegrations] = useState<Integration[]>([
-    {
-      id: 'ashby',
-      name: 'Ashby',
-      logoText: 'Ashby',
-      logoStyle: 'font-serif tracking-tight text-zinc-900',
-      connected: false
-    },
-    {
-      id: 'greenhouse',
-      name: 'Greenhouse',
-      logoText: 'greenhouse',
-      logoStyle: 'font-sans font-medium text-emerald-700 lowercase',
-      connected: false
-    },
-    {
-      id: 'lever',
-      name: 'Lever',
-      logoText: 'LEVER',
-      logoStyle: 'font-sans font-black italic tracking-wide text-zinc-800 uppercase',
-      connected: false
-    },
-    {
-      id: 'posthog',
-      name: 'Workable',
-      logoText: 'workable',
-      logoStyle: 'font-mono font-bold text-orange-600',
-      connected: false
-    }
-  ]);
+const INITIAL_INTEGRATIONS: Omit<Integration, 'connected'>[] = [
+  { id: 'ashby', name: 'Ashby', logoText: 'Ashby', logoStyle: 'font-serif tracking-tight text-zinc-900' },
+  { id: 'greenhouse', name: 'Greenhouse', logoText: 'greenhouse', logoStyle: 'font-sans font-medium text-emerald-700 lowercase' },
+  { id: 'lever', name: 'Lever', logoText: 'LEVER', logoStyle: 'font-sans font-black italic tracking-wide text-zinc-800 uppercase' },
+  { id: 'workable', name: 'Workable', logoText: 'workable', logoStyle: 'font-mono font-bold text-orange-600' },
+];
 
+export default function IntegrationsPage() {
+  const [integrations, setIntegrations] = useState<Integration[]>(
+    INITIAL_INTEGRATIONS.map(i => ({ ...i, connected: false }))
+  );
   const [slackConnected, setSlackConnected] = useState(false);
   const [connectingId, setConnectingId] = useState<string | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(async ({ data: { user } }) => {
+      if (!user) return;
+      setUserId(user.id);
+
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('agent_config')
+        .eq('id', user.id)
+        .single();
+
+      const saved = profile?.agent_config?.integrations;
+      if (saved) {
+        setIntegrations(INITIAL_INTEGRATIONS.map(i => ({ ...i, connected: !!saved[i.id] })));
+        setSlackConnected(!!saved.slack);
+      }
+    });
+  }, []);
+
+  const persistIntegrations = async (updatedIntegrations: Integration[], slack: boolean) => {
+    if (!userId) return;
+    const { data: profile } = await supabase.from('profiles').select('agent_config').eq('id', userId).single();
+    const currentConfig = profile?.agent_config || {};
+    const integrationMap: Record<string, boolean> = { slack };
+    updatedIntegrations.forEach(i => { integrationMap[i.id] = i.connected; });
+
+    await supabase
+      .from('profiles')
+      .update({ agent_config: { ...currentConfig, integrations: integrationMap } })
+      .eq('id', userId);
+  };
 
   const toggleConnection = (id: string) => {
     setConnectingId(id);
     setTimeout(() => {
-      setIntegrations(prev => prev.map(item => {
-        if (item.id === id) {
-          return { ...item, connected: !item.connected };
-        }
-        return item;
-      }));
+      setIntegrations(prev => {
+        const updated = prev.map(item => item.id === id ? { ...item, connected: !item.connected } : item);
+        persistIntegrations(updated, slackConnected);
+        return updated;
+      });
       setConnectingId(null);
-    }, 1000);
+    }, 800);
   };
 
   const handleSlackConnect = () => {
     setConnectingId('slack');
     setTimeout(() => {
-      setSlackConnected(!slackConnected);
+      const newSlack = !slackConnected;
+      setSlackConnected(newSlack);
+      persistIntegrations(integrations, newSlack);
       setConnectingId(null);
-    }, 1200);
+    }, 800);
   };
 
   return (
     <div className="p-10 bg-white">
       <div className="max-w-4xl space-y-10">
-        {/* Title Block */}
         <div>
-          <h1 className="text-2xl font-extrabold text-zinc-900 tracking-tight">Integrations</h1>
+          <h1 className="text-2xl font-extrabold text-zinc-900 tracking-tight">Intégrations</h1>
           <p className="text-sm text-zinc-400 font-medium mt-1">
-            Connect your tools and services
+            Connectez vos outils et services
           </p>
         </div>
 
-        {/* Section Applicant Tracking Systems */}
         <div className="space-y-4">
-          <h2 className="text-sm font-bold text-zinc-800 uppercase tracking-wider">Applicant Tracking Systems</h2>
-          
+          <h2 className="text-sm font-bold text-zinc-800 uppercase tracking-wider">Systèmes ATS</h2>
+
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-3xl">
             {integrations.map((item) => (
               <div
@@ -92,28 +104,24 @@ export default function IntegrationsPage() {
                   item.connected ? 'border-[#5FC890] bg-[#F7FDF9]' : 'hover:border-zinc-300'
                 }`}
               >
-                {/* Logo area */}
                 <div className="flex items-start justify-between">
-                  <span className={`text-xl ${item.logoStyle}`}>
-                    {item.logoText}
-                  </span>
+                  <span className={`text-xl ${item.logoStyle}`}>{item.logoText}</span>
                   {item.connected && (
                     <span className="text-[9px] bg-emerald-50 text-emerald-600 font-extrabold px-1.5 py-0.5 rounded flex items-center gap-1 uppercase select-none">
                       <Check className="h-2.5 w-2.5" />
-                      Connected
+                      Connecté
                     </span>
                   )}
                 </div>
 
-                {/* Info & action */}
                 <div className="flex items-center justify-between text-xs font-bold text-zinc-400 pt-4">
-                  <span>ATS Connector</span>
+                  <span>Connecteur ATS</span>
                   <div className="flex items-center gap-1 text-zinc-500 hover:text-zinc-800">
                     {connectingId === item.id ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
                       <>
-                        <span>{item.connected ? 'Disconnect' : 'Connect'}</span>
+                        <span>{item.connected ? 'Déconnecter' : 'Connecter'}</span>
                         <ArrowRight className="h-3.5 w-3.5" />
                       </>
                     )}
@@ -124,10 +132,9 @@ export default function IntegrationsPage() {
           </div>
         </div>
 
-        {/* Section Slack App */}
         <div className="space-y-4 pt-4">
-          <h2 className="text-sm font-bold text-zinc-800 uppercase tracking-wider">Slack App</h2>
-          
+          <h2 className="text-sm font-bold text-zinc-800 uppercase tracking-wider">App Slack</h2>
+
           <div className="border border-zinc-200 rounded-2xl p-6 bg-zinc-50/30 max-w-3xl flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 select-none">
             <div className="flex items-center gap-3">
               <div className="h-10 w-10 bg-zinc-100 rounded-xl flex items-center justify-center shrink-0 border border-zinc-150">
@@ -136,9 +143,9 @@ export default function IntegrationsPage() {
                 </svg>
               </div>
               <div className="space-y-0.5">
-                <h4 className="font-extrabold text-sm text-zinc-900">Slack Integration</h4>
+                <h4 className="font-extrabold text-sm text-zinc-900">Intégration Slack</h4>
                 <p className="text-xs text-zinc-500 font-semibold leading-relaxed">
-                  Run Vectra agents from Slack.
+                  Lancez les agents Vectra depuis Slack.
                 </p>
               </div>
             </div>
@@ -156,10 +163,10 @@ export default function IntegrationsPage() {
               ) : slackConnected ? (
                 <>
                   <Check className="h-3.5 w-3.5 text-emerald-600" />
-                  <span>Slack Connected</span>
+                  <span>Slack connecté</span>
                 </>
               ) : (
-                'Add to Slack'
+                'Ajouter à Slack'
               )}
             </Button>
           </div>

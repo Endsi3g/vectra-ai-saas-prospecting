@@ -7,10 +7,13 @@ export interface AuthenticatedUser {
 }
 
 export async function getAuthenticatedUser(req: Request): Promise<AuthenticatedUser | null> {
-  // Bypass authentication redirection in testing mode
-  const isTestingBypass = req.headers.get('x-test-bypass') === 'true' ||
-                          req.headers.get('Cookie')?.includes('sb-mock-session=true') ||
-                          process.env.PLAYWRIGHT_TEST === 'true';
+  // Testing bypass only active in local E2E mode — never in production
+  const isE2eTesting = process.env.NODE_ENV === 'development' && process.env.E2E_TESTING === 'true';
+  const isTestingBypass = isE2eTesting && (
+    req.headers.get('x-test-bypass') === 'true' ||
+    req.headers.get('Cookie')?.includes('sb-mock-session=true') ||
+    process.env.PLAYWRIGHT_TEST === 'true'
+  );
   if (isTestingBypass) {
     return { id: 'mock-user-id', email: 'kael@example.com' };
   }

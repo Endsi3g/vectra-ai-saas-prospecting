@@ -2,8 +2,11 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
-  const hasBypassParam = request.nextUrl.searchParams.get('bypass') === 'true' || 
-                          request.nextUrl.searchParams.get('bypass-auth') === 'true';
+  const isE2eTesting = process.env.NODE_ENV === 'development' && process.env.E2E_TESTING === 'true';
+  const hasBypassParam = isE2eTesting && (
+    request.nextUrl.searchParams.get('bypass') === 'true' ||
+    request.nextUrl.searchParams.get('bypass-auth') === 'true'
+  );
 
   if (hasBypassParam) {
     const url = request.nextUrl.clone();
@@ -17,7 +20,8 @@ export async function updateSession(request: NextRequest) {
       path: '/',
       maxAge: 3600,
       sameSite: 'lax',
-      httpOnly: false
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
     });
     return redirectResponse;
   }
@@ -67,10 +71,12 @@ export async function updateSession(request: NextRequest) {
                           request.nextUrl.pathname.startsWith('/onboarding') ||
                           request.nextUrl.pathname.startsWith('/api/generate');
 
-  // Bypass authentication redirection in testing mode
-  const isTestingBypass = request.headers.get('x-test-bypass') === 'true' ||
-                          request.cookies.get('sb-mock-session')?.value === 'true' || 
-                          process.env.PLAYWRIGHT_TEST === 'true';
+  // Testing bypass only active in local E2E mode
+  const isTestingBypass = isE2eTesting && (
+    request.headers.get('x-test-bypass') === 'true' ||
+    request.cookies.get('sb-mock-session')?.value === 'true' ||
+    process.env.PLAYWRIGHT_TEST === 'true'
+  );
   if (!user && isProtectedPath && !isTestingBypass) {
     // no user, respond by redirecting the user to the sign-in page
     const url = request.nextUrl.clone()

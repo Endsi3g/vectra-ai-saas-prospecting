@@ -5,7 +5,6 @@ import { supabaseAdmin } from '@/lib/supabase';
 export async function POST(req: Request) {
   const bodyText = await req.text();
   const signature = req.headers.get('stripe-signature');
-  const isMockWebhook = req.headers.get('x-mock-webhook') === 'true';
 
   let event: any;
 
@@ -13,19 +12,17 @@ export async function POST(req: Request) {
     const stripeWebhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
 
-    if (stripeSecretKey && stripeWebhookSecret && signature && !isMockWebhook) {
+    if (stripeSecretKey && stripeWebhookSecret && signature) {
       const stripe = new Stripe(stripeSecretKey, {
         apiVersion: '2025-02-02-preview' as any,
       });
       event = stripe.webhooks.constructEvent(bodyText, signature, stripeWebhookSecret);
-    } else {
-      // Mock / Dev fallback bypass
-      if (process.env.NODE_ENV === 'production' && !isMockWebhook) {
-        return NextResponse.json({ error: 'Webhook secret or signature missing in production.' }, { status: 400 });
-      }
-      // Direct JSON parse for testing
+    } else if (process.env.NODE_ENV === 'development' && process.env.E2E_TESTING === 'true') {
+      // Only allow unsigned webhooks in local E2E testing
+      console.warn('[STRIPE WEBHOOK] E2E testing mode — skipping signature verification');
       event = JSON.parse(bodyText);
-      console.log('[STRIPE WEBHOOK MOCK] Received simulated webhook event:', event.type);
+    } else {
+      return NextResponse.json({ error: 'Signature ou secret webhook manquant.' }, { status: 400 });
     }
 
     const { type, data } = event;

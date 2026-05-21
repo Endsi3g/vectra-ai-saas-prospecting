@@ -30,16 +30,6 @@ export async function POST(req: Request) {
       .eq('id', userId)
       .single();
 
-    const nylasClientSecret = process.env.NYLAS_CLIENT_SECRET;
-    const hasTeamAccess = profile?.plan === 'agency' || profile?.plan === 'scale';
-
-    if (!hasTeamAccess) {
-      return NextResponse.json(
-        { error: 'L\'invitation de membres nécessite le plan Scale. Mettez à niveau votre abonnement.' },
-        { status: 403 }
-      );
-    }
-
     // Send invitation via Supabase Auth (triggers built-in invite email)
     const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'https://vectra.ai';
     const { data, error } = await supabaseAdmin.auth.admin.inviteUserByEmail(email, {
