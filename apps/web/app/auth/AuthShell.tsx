@@ -83,9 +83,9 @@ export default function AuthShell({
       <footer className="border-t border-zinc-100 py-4 px-8 flex flex-wrap items-center justify-between gap-4 text-xs text-zinc-400">
         <span>&copy; {new Date().getFullYear()} Vectra Inc.</span>
         <div className="flex gap-4">
-          <Link href="#" className="hover:text-primary transition-colors">Confidentialité</Link>
-          <Link href="#" className="hover:text-primary transition-colors">Conditions</Link>
-          <Link href="#" className="hover:text-primary transition-colors">En savoir plus</Link>
+          <Link href="/legal/privacy" className="hover:text-primary transition-colors">Confidentialité</Link>
+          <Link href="/legal/terms" className="hover:text-primary transition-colors">Conditions</Link>
+          <Link href="/#features" className="hover:text-primary transition-colors">En savoir plus</Link>
         </div>
       </footer>
     </div>

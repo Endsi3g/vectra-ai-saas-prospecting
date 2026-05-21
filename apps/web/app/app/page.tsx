@@ -26,8 +26,11 @@ export default function DashboardPage() {
   const [chartRange, setChartRange] = useState<'daily' | 'weekly'>('daily');
   const [totalLists, setTotalLists] = useState(0);
   const [candidatesSaved, setCandidatesSaved] = useState(0);
-  const [totalSearches, setTotalSearches] = useState(1);
+  const [totalSearches, setTotalSearches] = useState(0);
   const [candidatesOutreached, setCandidatesOutreached] = useState(0);
+  const [latestCampaign, setLatestCampaign] = useState<{ id: string; name: string; icp?: string } | null>(null);
+  const [chartDailyData, setChartDailyData] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
+  const [chartWeeklyData, setChartWeeklyData] = useState<number[]>([0, 0, 0, 0, 0, 0, 0]);
 
   useEffect(() => {
     const fetchUserAndStats = async () => {
@@ -38,7 +41,7 @@ export default function DashboardPage() {
         // Parallelize profile + campaigns + collections fetches
         const [profileRes, campaignsRes, collectionsRes] = await Promise.all([
           supabase.from('profiles').select('first_name').eq('id', user.id).single(),
-          supabase.from('campaigns').select('id').eq('user_id', user.id),
+          supabase.from('campaigns').select('id, name, icp, created_at').eq('user_id', user.id).order('created_at', { ascending: false }),
           supabase.from('collections').select('*', { count: 'exact', head: true }).eq('user_id', user.id)
         ]);
 
@@ -46,18 +49,35 @@ export default function DashboardPage() {
         if (collectionsRes.count !== null) setTotalLists(collectionsRes.count);
 
         const userCampaigns = campaignsRes.data || [];
-        setTotalSearches(userCampaigns.length || 0);
+        setTotalSearches(userCampaigns.length);
+        if (userCampaigns.length > 0 && userCampaigns[0]) {
+          setLatestCampaign({ id: userCampaigns[0].id, name: userCampaigns[0].name, icp: userCampaigns[0].icp });
+        }
 
         if (userCampaigns.length > 0) {
           const campaignIds = userCampaigns.map(c => c.id);
+          const sevenDaysAgo = new Date();
+          sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 6);
 
-          // Parallelize leads + outreach counts
-          const [leadsRes, leadsForOutreachRes] = await Promise.all([
+          // Parallelize leads count, outreach count, and leads-over-time
+          const [leadsRes, leadsForOutreachRes, recentLeadsRes] = await Promise.all([
             supabase.from('leads').select('*', { count: 'exact', head: true }).in('campaign_id', campaignIds),
-            supabase.from('leads').select('id').in('campaign_id', campaignIds)
+            supabase.from('leads').select('id').in('campaign_id', campaignIds),
+            supabase.from('leads').select('created_at').in('campaign_id', campaignIds).gte('created_at', sevenDaysAgo.toISOString())
           ]);
 
           if (leadsRes.count !== null) setCandidatesSaved(leadsRes.count);
+
+          // Build daily chart data (last 7 days)
+          const dailyCounts = [0, 0, 0, 0, 0, 0, 0];
+          (recentLeadsRes.data || []).forEach((lead: any) => {
+            const leadDate = new Date(lead.created_at);
+            const dayDiff = Math.floor((Date.now() - leadDate.getTime()) / (1000 * 60 * 60 * 24));
+            if (dayDiff >= 0 && dayDiff < 7) {
+              dailyCounts[6 - dayDiff] = (dailyCounts[6 - dayDiff] || 0) + 1;
+            }
+          });
+          if (dailyCounts.some(v => v > 0)) setChartDailyData(dailyCounts);
 
           const leadIds = (leadsForOutreachRes.data || []).map((l: any) => l.id);
           if (leadIds.length > 0) {
@@ -116,11 +136,7 @@ export default function DashboardPage() {
     }
   ];
 
-  // Mock SVG Chart Data
-  const dailyData = [10, 15, 8, 25, 18, 30, 42];
-  const weeklyData = [120, 180, 240, 210, 310, 400, 520];
-
-  const activePoints = chartRange === 'daily' ? dailyData : weeklyData;
+  const activePoints = chartRange === 'daily' ? chartDailyData : chartWeeklyData;
   const maxVal = Math.max(...activePoints) * 1.15;
   const chartHeight = 120;
   const chartWidth = 500;
@@ -180,35 +196,58 @@ export default function DashboardPage() {
         {/* Active searches / Campaign widget */}
         <div className="space-y-3">
           <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider select-none">Active Search Campaigns</h3>
-          <Card 
-            onClick={() => router.push('/app/sourcing')}
-            className="border-zinc-200 hover:border-primary cursor-pointer transition-all shadow-sm bg-white overflow-hidden group"
-          >
-            <CardContent className="p-5 flex items-center justify-between gap-6">
-              <div className="flex items-center gap-4">
-                <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0 group-hover:bg-primary group-hover:text-white transition-all duration-300">
-                  <Compass className="h-5 w-5" />
-                </div>
-                <div className="space-y-1">
-                  <div className="flex items-center gap-2">
-                    <span className="font-extrabold text-sm text-zinc-900">SaaS Founders - Canada</span>
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                    </span>
-                    <Badge variant="secondary" className="text-xs bg-emerald-50 text-emerald-800 border-none px-1.5 h-4">
-                      Sourcing Active
-                    </Badge>
+          {latestCampaign ? (
+            <Card
+              onClick={() => router.push('/app/sourcing')}
+              className="border-zinc-200 hover:border-primary cursor-pointer transition-all shadow-sm bg-white overflow-hidden group"
+            >
+              <CardContent className="p-5 flex items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-sm shrink-0 group-hover:bg-primary group-hover:text-white transition-all duration-300">
+                    <Compass className="h-5 w-5" />
                   </div>
-                  <p className="text-xs text-zinc-400">Targeting founders with active software engineering structures in Canada.</p>
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-extrabold text-sm text-zinc-900">{latestCampaign.name}</span>
+                      <span className="relative flex h-2 w-2">
+                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                        <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                      </span>
+                      <Badge variant="secondary" className="text-xs bg-emerald-50 text-emerald-800 border-none px-1.5 h-4">
+                        Sourcing Active
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-zinc-400">{latestCampaign.icp || 'Campagne de prospection active.'}</p>
+                  </div>
                 </div>
-              </div>
-              <div className="flex items-center gap-2 text-zinc-400 group-hover:text-primary transition-colors text-xs font-bold select-none">
-                <span>View results</span>
-                <ArrowRight className="h-4 w-4" />
-              </div>
-            </CardContent>
-          </Card>
+                <div className="flex items-center gap-2 text-zinc-400 group-hover:text-primary transition-colors text-xs font-bold select-none">
+                  <span>View results</span>
+                  <ArrowRight className="h-4 w-4" />
+                </div>
+              </CardContent>
+            </Card>
+          ) : (
+            <Card
+              onClick={() => router.push('/app/campaigns')}
+              className="border-dashed border-zinc-200 hover:border-primary cursor-pointer transition-all shadow-none bg-white group"
+            >
+              <CardContent className="p-5 flex items-center justify-between gap-6">
+                <div className="flex items-center gap-4">
+                  <div className="h-10 w-10 rounded-xl bg-zinc-100 text-zinc-400 flex items-center justify-center shrink-0 group-hover:bg-primary/10 group-hover:text-primary transition-all">
+                    <Compass className="h-5 w-5" />
+                  </div>
+                  <div className="space-y-1">
+                    <span className="font-bold text-sm text-zinc-500">Aucune campagne active</span>
+                    <p className="text-xs text-zinc-400">Créez votre première campagne pour commencer à sourcer des leads.</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-zinc-400 group-hover:text-primary transition-colors text-xs font-bold select-none">
+                  <Plus className="h-4 w-4" />
+                  <span>Créer</span>
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
 
         {/* Stats Grid */}
