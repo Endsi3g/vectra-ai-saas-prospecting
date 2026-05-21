@@ -148,6 +148,71 @@ test.beforeEach(async ({ page, context }) => {
     });
   });
 
+  // Mock Brevo API routes
+  await page.route('**/api/brevo/**', async (route) => {
+    const url = route.request().url();
+    const isStats = url.includes('/stats');
+    const isLists = url.includes('/lists');
+    const isTemplates = url.includes('/templates');
+    const isSegments = url.includes('/segments');
+    if (isStats) {
+      await route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ connected: false, totalSent: 12450, openRate: 42.5, clickRate: 8.4, campaigns: [] }) });
+    } else if (isLists) {
+      await route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ lists: [{ id: '1', name: 'Prospects Vectra', totalSubscribers: 148 }] }) });
+    } else if (isTemplates) {
+      await route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ templates: [] }) });
+    } else if (isSegments) {
+      await route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ segments: [] }) });
+    } else {
+      // campaigns
+      await route.fulfill({ status: 200, contentType: 'application/json',
+        body: JSON.stringify({ connected: false, campaigns: [
+          { id: '1', name: 'SaaS Launch Promotion', status: 'sent', sent: 4500, opens: 1980, clicks: 395, openRate: 44, clickRate: 8.7, date: '2026-05-18' },
+          { id: '2', name: 'Product Update Q2', status: 'sent', sent: 5000, opens: 2150, clicks: 430, openRate: 43, clickRate: 8.6, date: '2026-05-10' },
+        ]}) });
+    }
+  });
+
+  // Mock API Keys
+  await page.route('**/api/keys*', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json',
+      body: JSON.stringify({ keys: [{ id: 'key-1', key_prefix: 'vt_live_92hf', name: 'Default Key', created_at: new Date().toISOString() }] }) });
+  });
+
+  // Mock Notifications (REST)
+  await page.route('**/rest/v1/notifications*', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+  });
+
+  // Mock Activity Logs
+  await page.route('**/rest/v1/activity_logs*', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+  });
+
+  // Mock Activity API
+  await page.route('**/api/activity*', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ logs: [] }) });
+  });
+
+  // Mock Lead Comments
+  await page.route('**/rest/v1/lead_comments*', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+  });
+
+  // Mock Comments API
+  await page.route('**/api/comments*', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ comments: [] }) });
+  });
+
+  // Mock Lead Collections
+  await page.route('**/rest/v1/lead_collections*', async (route) => {
+    await route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) });
+  });
+
   // Mock inbox_conversations and inbox_messages
   await page.route('**/rest/v1/inbox_conversations*', async (route) => {
     const mockConversations = [
@@ -223,7 +288,7 @@ test.describe('Vectra E2E UI Tests', () => {
     
     // Check main layout branding and user workspace
     await expect(page.locator('aside')).toBeVisible();
-    await expect(page.locator('text=Kael\'s Workspace')).toBeVisible();
+    await expect(page.locator('text=Vectra OS').first()).toBeVisible();
     
     // Check credits indicator widget
     await expect(page.locator('text=1,500')).toBeVisible();
@@ -546,16 +611,54 @@ test.describe('Vectra E2E UI Tests', () => {
 
   test('13. Brevo Settings Integration UI Flow', async ({ page }) => {
     await page.goto('/app/brevo');
-    
+
     // Check main title
     await expect(page.locator('text=Email Marketing (Brevo)')).toBeVisible();
-    
+
     // Check tabs
     await expect(page.locator('button:has-text("Campagnes")')).toBeVisible();
     await expect(page.locator('button:has-text("Templates")')).toBeVisible();
-    
+
     // Check loaded mock campaign
     await expect(page.locator('text=SaaS Launch Promotion').first()).toBeVisible();
+  });
+
+  test('14. API Keys Page — Real Key Generation UI', async ({ page }) => {
+    await page.goto('/app/settings/api-mcp');
+
+    // Existing key prefix shown from mock
+    await expect(page.locator('text=vt_live_92hf').first()).toBeVisible();
+
+    // Revoke button present
+    await expect(page.locator('button:has-text("Révoquer")').first()).toBeVisible();
+
+    // Generate key button present
+    await expect(page.locator('button:has-text("Créer une clé")').first()).toBeVisible();
+  });
+
+  test('15. Brevo Hub — Campaigns Tab + New Campaign Modal', async ({ page }) => {
+    await page.goto('/app/brevo');
+
+    // Confirm on campaigns tab by default
+    await expect(page.locator('button:has-text("Campagnes")').first()).toBeVisible();
+
+    // SaaS Launch Promotion campaign from mock
+    await expect(page.locator('text=SaaS Launch Promotion').first()).toBeVisible();
+
+    // Click Nouvelle Campagne
+    await page.locator('button:has-text("Nouvelle Campagne")').first().click();
+
+    // Modal should open with title
+    await expect(page.locator('h3:has-text("Nouvelle Campagne")').first()).toBeVisible();
+  });
+
+  test('16. Health Endpoint Returns OK', async ({ page }) => {
+    const response = await page.goto('/api/health');
+    expect(response?.status()).toBe(200);
+    const body = await response?.text();
+    const json = JSON.parse(body!);
+    expect(json.status).toBe('ok');
+    expect(json.timestamp).toBeDefined();
   });
 });
 
