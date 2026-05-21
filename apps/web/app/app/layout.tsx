@@ -496,8 +496,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             ) : (
               <div className="flex items-center justify-between">
                 <button className="flex items-center gap-2 hover:bg-zinc-100 px-2 py-1.5 rounded-md w-full text-left font-medium transition-colors">
-                  <div className="w-5 h-5 bg-emerald-500 rounded text-white flex items-center justify-center text-xs font-bold">W</div>
-                  <span className="flex-1 truncate text-zinc-950 text-xs font-semibold">Kael's Workspace</span>
+                  <div className="w-5 h-5 bg-emerald-500 rounded text-white flex items-center justify-center text-xs font-bold">V</div>
+                  <span className="flex-1 truncate text-zinc-950 text-xs font-semibold">Vectra OS</span>
                   <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
                   </svg>
@@ -660,10 +660,10 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                       </div>
                       <div className="flex flex-col min-w-0">
                         <span className="text-xs font-bold text-zinc-700 truncate capitalize">
-                          {userEmail ? userEmail.split('@')[0] : 'Kael Belceus'}
+                          {userEmail ? userEmail.split('@')[0] : 'Mon compte'}
                         </span>
                         <span className="text-[10px] text-zinc-400 truncate">
-                          {userEmail || 'kael@wrangle.com'}
+                          {userEmail || 'user@vectra.ai'}
                         </span>
                       </div>
                     </div>
