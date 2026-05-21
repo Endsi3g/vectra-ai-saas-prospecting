@@ -43,7 +43,7 @@ export async function POST(req: Request) {
 
     if (!nylasClientSecret) {
       // Mock fallback for development
-      console.log(`[NYLAS MOCK] Would send email to ${to} from ${mailbox.email}: ${subject}`);
+      console.log('[NYLAS MOCK] Would send email via mock mailbox.');
 
       // Update message status in DB if lead_id provided
       if (lead_id) {

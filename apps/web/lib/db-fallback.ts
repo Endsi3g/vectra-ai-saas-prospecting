@@ -18,8 +18,10 @@ export interface Lead {
   notes: string;
   location?: string;
   role?: string;
+  linkedin_url?: string;
+  phone?: string;
   saved?: boolean;
-  collections?: string[]; // list of collection IDs this lead belongs to
+  collections?: string[];
   created_at?: string;
 }
 
@@ -352,7 +354,11 @@ export async function saveLead(lead: Omit<Lead, 'id'> & { id?: string }): Promis
         company: lead.company,
         website: lead.website,
         email: lead.email,
-        notes: lead.notes
+        notes: lead.notes,
+        location: lead.location,
+        role: lead.role,
+        linkedin_url: lead.linkedin_url,
+        phone: lead.phone,
       })
       .select('*')
       .single();

@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       const emailBodyText = isSimulated ? delta.bodyText : 'Bonjour, oui je serais très intéressée par votre audit jeudi à 15h. Merci !';
       const grantId = isSimulated ? delta.grantId : (delta.account_id || 'mock-grant-active');
 
-      console.log(`[Nylas Webhook] Processing email from ${senderEmail} (Thread: ${threadId})`);
+      console.log(`[Nylas Webhook] Processing new email thread.`);
 
       // 1. Identify or retrieve the connected mailbox linked to this grant_id
       let mailboxId = '00000000-0000-0000-0000-000000000000';

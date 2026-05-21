@@ -55,7 +55,7 @@ export async function GET(request: Request) {
       grantId = tokenData.grant_id || tokenData.access_token;
       email = tokenData.email || tokenData.email_address || email;
     } else {
-      console.log(`[Nylas Callback] Dev environment: persisting mock mailbox credentials for email: ${email}`);
+      console.log('[Nylas Callback] Dev environment: persisting mock mailbox credentials.');
     }
 
     // 3. Upsert mailbox entry into Supabase database

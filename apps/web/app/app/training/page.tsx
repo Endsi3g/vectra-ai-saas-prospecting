@@ -45,65 +45,70 @@ export default function TrainingPage() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages, agentTyping]);
 
-  const startSimulation = () => {
+  const startSimulation = async () => {
     setIsSimulating(true);
     setSimulationEnded(false);
     setMessages([]);
     captureAnalyticsEvent('training_simulation_started', { persona: selectedPersona, difficulty: selectedDifficulty });
 
-    // Initial greeting from agent
     setAgentTyping(true);
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/training/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ persona: selectedPersona, difficulty: selectedDifficulty, messages: [] }),
+      });
+      const data = await res.json();
       setAgentTyping(false);
-      let greeting = 'Allô ?';
-      if (selectedPersona === 'ceo_busy') greeting = 'Oui, bonjour. Je suis très occupé, c\'est à quel sujet ?';
-      if (selectedPersona === 'cto_skeptic') greeting = 'Bonjour. J\'espère que ce n\'est pas encore pour me vendre un outil SaaS...';
-      if (selectedPersona === 'hr_budget') greeting = 'Bonjour, département RH, que puis-je pour vous ?';
-      
-      setMessages([{ sender: 'agent', text: greeting }]);
-    }, 1500);
+      setMessages([{ sender: 'agent', text: data.reply || 'Allô ?' }]);
+    } catch {
+      setAgentTyping(false);
+      const fallbacks: Record<string, string> = {
+        ceo_busy: 'Oui, bonjour. Je suis très occupé, c\'est à quel sujet ?',
+        cto_skeptic: 'Bonjour. J\'espère que ce n\'est pas encore pour me vendre un outil SaaS...',
+        hr_budget: 'Bonjour, département RH, que puis-je pour vous ?',
+      };
+      setMessages([{ sender: 'agent', text: fallbacks[selectedPersona] || 'Allô ?' }]);
+    }
   };
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!inputValue.trim() || agentTyping || simulationEnded) return;
 
     const userText = inputValue;
-    setMessages(prev => [...prev, { sender: 'user', text: userText }]);
+    const updatedMessages = [...messages, { sender: 'user' as const, text: userText }];
+    setMessages(updatedMessages);
     setInputValue('');
     setAgentTyping(true);
 
-    // Mock AI response
-    setTimeout(() => {
+    try {
+      const res = await fetch('/api/training/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          persona: selectedPersona,
+          difficulty: selectedDifficulty,
+          messages: updatedMessages,
+        }),
+      });
+
+      const data = await res.json();
       setAgentTyping(false);
-      
-      // Basic mock responses based on length of conversation
-      const msgCount = messages.length;
-      let reply = '';
-      let shouldEnd = false;
 
-      if (msgCount < 3) {
-        if (selectedPersona === 'ceo_busy') reply = 'Allez droit au but, je rentre en réunion dans 2 minutes. Quelle est votre proposition de valeur ?';
-        else if (selectedPersona === 'cto_skeptic') reply = 'Notre stack technique est déjà très complexe. Comment vous vous intégrez sans casser nos process ?';
-        else reply = 'Nous n\'avons pas de budget alloué pour ce type de solution cette année. Pourquoi devrais-je écouter ?';
-      } else if (msgCount < 5) {
-        if (selectedPersona === 'ceo_busy') reply = 'D\'accord, ça m\'intrigue. Avez-vous des cas d\'usage dans mon industrie ?';
-        else if (selectedPersona === 'cto_skeptic') reply = 'Le problème avec l\'IA, c\'est la sécurité des données. Que garantissez-vous ?';
-        else reply = 'Si le ROI est prouvable en 3 mois, je peux potentiellement débloquer une enveloppe exceptionnelle...';
-      } else {
-        reply = 'Très bien, envoyez-moi un résumé par email et proposez-moi un créneau la semaine prochaine. Je dois vous laisser.';
-        shouldEnd = true;
-      }
-
+      const reply = data.reply || 'Je dois vous laisser. Envoyez-moi un récapitulatif par email.';
       setMessages(prev => [...prev, { sender: 'agent', text: reply }]);
-      
-      if (shouldEnd) {
+
+      if (data.shouldEnd) {
         setTimeout(() => {
           setSimulationEnded(true);
-          captureAnalyticsEvent('training_simulation_ended', { messages_exchanged: msgCount });
-        }, 1000);
+          captureAnalyticsEvent('training_simulation_ended', { messages_exchanged: updatedMessages.length });
+        }, 800);
       }
-    }, 2000);
+    } catch {
+      setAgentTyping(false);
+      setMessages(prev => [...prev, { sender: 'agent', text: 'Désolé, une erreur est survenue. Réessayez.' }]);
+    }
   };
 
   const renderScore = () => {
