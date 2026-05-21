@@ -13,4 +13,3 @@ ALTER TABLE public.profiles
 CREATE INDEX IF NOT EXISTS leads_campaign_id_idx ON public.leads(campaign_id);
 CREATE INDEX IF NOT EXISTS messages_lead_id_idx ON public.messages(lead_id);
 CREATE INDEX IF NOT EXISTS follow_ups_lead_id_idx ON public.follow_ups(lead_id);
-CREATE INDEX IF NOT EXISTS leads_workspace_id_idx ON public.leads(workspace_id);
