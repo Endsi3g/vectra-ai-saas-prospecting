@@ -485,5 +485,77 @@ test.describe('Vectra E2E UI Tests', () => {
     // First response for CEO busy is: 'Allez droit au but, je rentre en réunion dans 2 minutes. Quelle est votre proposition de valeur ?'
     await expect(page.locator('text=Allez droit au but, je rentre en réunion dans 2 minutes.')).toBeVisible();
   });
+
+  test('9. Landing Page Demo Bypass (Direct URL Access)', async ({ page, context }) => {
+    // Clear cookies to test redirect bypass
+    await context.clearCookies();
+
+    // Access landing page with bypass parameter
+    await page.goto('/app?bypass=true');
+
+    // It should immediately redirect to /app (which is the app landing / dashboard page)
+    await page.waitForURL('**/app');
+    await expect(page.locator('text=Active Search Campaigns')).toBeVisible();
+
+    // Verify cookies contain mock-session
+    const cookies = await context.cookies();
+    const bypassCookie = cookies.find(c => c.name === 'sb-mock-session');
+    expect(bypassCookie).toBeDefined();
+    expect(bypassCookie?.value).toBe('true');
+  });
+
+  test('10. Legal Pages Render & Back Buttons', async ({ page }) => {
+    // 1. Terms of Service Page
+    await page.goto('/terms');
+    await expect(page.locator('h1')).toContainText('Conditions Générales d\'Utilisation');
+    await page.click('text=Retour à l\'accueil');
+    await page.waitForURL('**/');
+
+    // 2. Privacy Policy Page
+    await page.goto('/privacy');
+    await expect(page.locator('h1')).toContainText('Politique de Confidentialité');
+    await page.click('text=Retour à l\'accueil');
+    await page.waitForURL('**/');
+  });
+
+  test('11. Notification Dropdown List and Actions', async ({ page }) => {
+    await page.goto('/app');
+    
+    // Check that notification bell exists (look for header container)
+    const bellBtn = page.locator('#notification-dropdown-trigger').first();
+    await expect(bellBtn).toBeVisible();
+    await bellBtn.click();
+
+    // Check that dropdown panel opens and displays title
+    await expect(page.locator('text=Notifications').first()).toBeVisible();
+
+    // Check that Mark all as read button is visible
+    const markReadBtn = page.locator('button:has-text("Tout marquer comme lu")').first();
+    await expect(markReadBtn).toBeVisible();
+    await markReadBtn.click();
+  });
+
+  test('12. Library CSV Export Button Interactive Check', async ({ page }) => {
+    await page.goto('/app/library');
+
+    // Check that the CSV export button is visible
+    const exportBtn = page.locator('#library-export-csv-btn');
+    await expect(exportBtn).toBeVisible();
+    await expect(exportBtn).toBeEnabled();
+  });
+
+  test('13. Brevo Settings Integration UI Flow', async ({ page }) => {
+    await page.goto('/app/brevo');
+    
+    // Check main title
+    await expect(page.locator('text=Email Marketing (Brevo)')).toBeVisible();
+    
+    // Check tabs
+    await expect(page.locator('button:has-text("Campagnes")')).toBeVisible();
+    await expect(page.locator('button:has-text("Templates")')).toBeVisible();
+    
+    // Check loaded mock campaign
+    await expect(page.locator('text=SaaS Launch Promotion').first()).toBeVisible();
+  });
 });
 

@@ -35,10 +35,12 @@ import {
   MessageSquare,
   TrendingUp,
   CalendarClock,
-  PhoneCall
+  PhoneCall,
+  Send
 } from 'lucide-react';
 import TourGuide from '@/components/TourGuide';
 import ProfileDropdown from '@/components/ProfileDropdown';
+import NotificationDropdown from '@/components/NotificationDropdown';
 
 function CollectionsList({ 
   collections, 
@@ -89,6 +91,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
   const [showTour, setShowTour] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [userEmail, setUserEmail] = useState<string>('');
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [creditsCount, setCreditsCount] = useState<number>(2000);
@@ -127,14 +130,24 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       }
     };
 
+    const handleToggleSidebar = () => {
+      setIsMobileOpen(prev => !prev);
+    };
+
     window.addEventListener('vectra-collections-updated', handleCollectionsUpdate);
     window.addEventListener('vectra-credits-updated', handleCreditsUpdate);
+    window.addEventListener('vectra-toggle-sidebar', handleToggleSidebar);
 
     return () => {
       window.removeEventListener('vectra-collections-updated', handleCollectionsUpdate);
       window.removeEventListener('vectra-credits-updated', handleCreditsUpdate);
+      window.removeEventListener('vectra-toggle-sidebar', handleToggleSidebar);
     };
   }, []);
+
+  useEffect(() => {
+    setIsMobileOpen(false);
+  }, [pathname]);
 
   const handleCreateCollection = async () => {
     if (!newCollectionName.trim()) return;
@@ -311,6 +324,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       icon: MessageSquare,
     },
     {
+      name: 'Brevo',
+      href: '/app/brevo',
+      icon: Send,
+    },
+    {
       name: 'Agents',
       href: '/app/agents',
       icon: Bot,
@@ -338,6 +356,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { name: 'Branding', href: '/app/settings/branding', icon: Palette },
     { name: 'Referrals', href: '/app/settings/referrals', icon: Gift },
     { name: 'API/MCP', href: '/app/settings/api-mcp', icon: Terminal },
+    { name: 'Brevo', href: '/app/settings/brevo', icon: Send },
   ];
 
   const isItemActive = (href: string) => {
@@ -364,9 +383,21 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
 
         {/* Lower container containing Sidebar and Main Area */}
-        <div className="flex-1 flex overflow-hidden">
+        <div className="flex-1 flex overflow-hidden relative">
+          {/* Mobile Overlay backdrop */}
+          {isMobileOpen && (
+            <div 
+              className="fixed inset-0 z-45 bg-zinc-950/40 backdrop-blur-sm md:hidden animate-in fade-in duration-200"
+              onClick={() => setIsMobileOpen(false)}
+            />
+          )}
+
           {/* Settings Sidebar */}
-          <aside className="w-60 flex flex-col border-r border-zinc-200 bg-white shrink-0">
+          <aside 
+            className={`fixed inset-y-0 left-0 z-50 md:relative flex flex-col border-r border-zinc-200 bg-white transition-transform md:transition-all duration-300 shrink-0 ${
+              isMobileOpen ? 'translate-x-0' : '-translate-x-full'
+            } md:translate-x-0 w-60 md:flex h-full`}
+          >
             {/* Go back button header */}
             <div className="h-14 flex items-center px-4 select-none">
               <Link
@@ -435,12 +466,22 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Mobile Overlay backdrop */}
+        {isMobileOpen && (
+          <div 
+            className="fixed inset-0 z-35 bg-zinc-950/40 backdrop-blur-sm md:hidden animate-in fade-in duration-200"
+            onClick={() => setIsMobileOpen(false)}
+          />
+        )}
+
         {/* Sidebar navigation */}
         <aside 
-          className={`flex flex-col border-r border-zinc-200 bg-[#FBFBFC] transition-all duration-300 shrink-0 relative ${
-            isCollapsed ? 'w-16' : 'w-[260px]'
-          }`}
+          className={`fixed inset-y-0 left-0 z-40 md:relative flex flex-col border-r border-zinc-200 bg-[#FBFBFC] transition-transform md:transition-all duration-300 shrink-0 ${
+            isMobileOpen ? 'translate-x-0' : '-translate-x-full'
+          } md:translate-x-0 ${
+            isCollapsed ? 'md:w-16' : 'md:w-[260px]'
+          } w-[260px] md:flex h-full`}
         >
           {/* Brand Workspace Header */}
           <div className="p-3 border-b border-zinc-100 select-none">
@@ -455,8 +496,8 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             ) : (
               <div className="flex items-center justify-between">
                 <button className="flex items-center gap-2 hover:bg-zinc-100 px-2 py-1.5 rounded-md w-full text-left font-medium transition-colors">
-                  <div className="w-5 h-5 bg-emerald-500 rounded text-white flex items-center justify-center text-xs font-bold">V</div>
-                  <span className="flex-1 truncate text-zinc-950 text-xs font-semibold">Vectra OS</span>
+                  <div className="w-5 h-5 bg-emerald-500 rounded text-white flex items-center justify-center text-xs font-bold">W</div>
+                  <span className="flex-1 truncate text-zinc-950 text-xs font-semibold">Kael's Workspace</span>
                   <svg className="w-4 h-4 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
                   </svg>
@@ -587,49 +628,87 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 100%
               </div>
             )}
-
-            {/* User profile dropdown triggers */}
-            <div className="relative">
-              <button
-                onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className="w-full flex items-center justify-between rounded-xl p-1.5 text-left hover:bg-zinc-100/80 transition-colors"
-              >
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-xs shrink-0 select-none">
-                    {userEmail ? userEmail.slice(0, 2).toUpperCase() : 'KB'}
-                  </div>
-                  {!isCollapsed && (
-                    <div className="flex flex-col min-w-0">
-                      <span className="text-xs font-bold text-zinc-700 truncate capitalize">
-                        {userEmail ? userEmail.split('@')[0] : 'Mon compte'}
-                      </span>
-                      <span className="text-[10px] text-zinc-400 truncate">
-                        {userEmail || 'user@vectra.ai'}
-                      </span>
-                    </div>
-                  )}
+            {isCollapsed ? (
+              <div className="flex flex-col items-center gap-3 pb-2 pt-1 border-t border-zinc-150">
+                <NotificationDropdown />
+                <div className="relative">
+                  <button
+                    onClick={() => setIsProfileOpen(!isProfileOpen)}
+                    className="h-8 w-8 rounded-lg bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-xs hover:bg-zinc-100 transition-colors"
+                  >
+                  </button>
+                  <ProfileDropdown 
+                    isOpen={isProfileOpen}
+                    onClose={() => setIsProfileOpen(false)}
+                    userEmail={userEmail}
+                    onSignOut={handleSignOut}
+                    creditsCount={creditsCount}
+                    creditsLimit={creditsLimit}
+                  />
                 </div>
-                {!isCollapsed && (
-                  <ChevronDown className="h-4 w-4 text-zinc-400 shrink-0" />
-                )}
-              </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2 pt-2 border-t border-zinc-100">
+                <div className="flex-1 relative">
+                  <button
+                    onClick={() => setIsProfileOpen(!isProfileOpen)}
+                    className="w-full flex items-center justify-between rounded-xl p-1.5 text-left hover:bg-zinc-100/80 transition-colors"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div className="h-8 w-8 rounded-lg bg-primary/10 text-primary border border-primary/20 flex items-center justify-center font-bold text-xs shrink-0 select-none">
+                        {userEmail ? userEmail.slice(0, 2).toUpperCase() : 'KB'}
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="text-xs font-bold text-zinc-700 truncate capitalize">
+                          {userEmail ? userEmail.split('@')[0] : 'Kael Belceus'}
+                        </span>
+                        <span className="text-[10px] text-zinc-400 truncate">
+                          {userEmail || 'kael@wrangle.com'}
+                        </span>
+                      </div>
+                    </div>
+                    <ChevronDown className="h-4 w-4 text-zinc-400 shrink-0" />
+                  </button>
 
-              {/* Profile Dropdown Popover */}
-              <ProfileDropdown 
-                isOpen={isProfileOpen}
-                onClose={() => setIsProfileOpen(false)}
-                userEmail={userEmail}
-                onSignOut={handleSignOut}
-                creditsCount={creditsCount}
-                creditsLimit={creditsLimit}
-              />
-            </div>
+                  <ProfileDropdown 
+                    isOpen={isProfileOpen}
+                    onClose={() => setIsProfileOpen(false)}
+                    userEmail={userEmail}
+                    onSignOut={handleSignOut}
+                    creditsCount={creditsCount}
+                    creditsLimit={creditsLimit}
+                  />
+                </div>
+                <div className="shrink-0">
+                  <NotificationDropdown />
+                </div>
+              </div>
+            )}
 
           </div>
         </aside>
 
         {/* Main Content Area */}
-        <main className="flex-1 flex flex-col h-full overflow-hidden bg-zinc-50">
+        <main className="flex-grow flex-1 flex flex-col h-full overflow-hidden bg-zinc-50 relative">
+          {/* Universal Mobile Header */}
+          <div className="md:hidden flex h-14 items-center justify-between px-4 border-b border-zinc-200 bg-white select-none shrink-0">
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setIsMobileOpen(true)}
+                className="p-2 -ml-2 rounded-xl text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 transition-all focus:outline-none"
+                aria-label="Open menu"
+              >
+                <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                </svg>
+              </button>
+              <div className="w-6 h-6 bg-emerald-500 rounded text-white flex items-center justify-center text-xs font-bold">V</div>
+              <span className="text-xs font-bold text-zinc-800">Vectra OS</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <NotificationDropdown />
+            </div>
+          </div>
           {children}
         </main>
       </div>

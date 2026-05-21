@@ -301,8 +301,8 @@ export default function MarketingLandingPage() {
               </div>
               <div className="space-y-2">
                 <p className="font-semibold text-zinc-600 mb-3">Légal</p>
-                <Link href="/legal/terms" className="block hover:text-zinc-900 transition-colors">Conditions</Link>
-                <Link href="/legal/privacy" className="block hover:text-zinc-900 transition-colors">Confidentialité</Link>
+                <Link href="/terms" className="block hover:text-zinc-900 transition-colors">Conditions</Link>
+                <Link href="/privacy" className="block hover:text-zinc-900 transition-colors">Confidentialité</Link>
               </div>
             </div>
           </div>

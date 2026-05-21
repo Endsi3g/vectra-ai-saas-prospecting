@@ -2,8 +2,9 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { Bell, MessageSquare, Coins, ChevronRight } from 'lucide-react';
+import { MessageSquare, Coins, ChevronRight } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
+import NotificationDropdown from '@/components/NotificationDropdown';
 
 export default function SettingsSubLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
@@ -41,24 +42,32 @@ export default function SettingsSubLayout({ children }: { children: React.ReactN
   else if (pathname.includes('/branding')) pageName = 'Branding';
   else if (pathname.includes('/referrals')) pageName = 'Referrals';
   else if (pathname.includes('/api-mcp')) pageName = 'API/MCP';
+  else if (pathname.includes('/brevo')) pageName = 'Brevo';
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-white">
       {/* Top Header Row */}
-      <header className="h-14 border-b border-zinc-150 flex items-center justify-between px-6 shrink-0 bg-white">
+      <header className="h-14 border-b border-zinc-150 flex items-center justify-between px-4 sm:px-6 shrink-0 bg-white">
         {/* Breadcrumb breadcrumbs */}
         <div className="flex items-center gap-2 text-xs text-zinc-500 font-bold select-none">
-          <span className="hover:text-zinc-800 cursor-pointer">Settings</span>
-          <ChevronRight className="h-3 w-3 text-zinc-300" />
+          <button
+            onClick={() => window.dispatchEvent(new Event('vectra-toggle-sidebar'))}
+            className="md:hidden p-1.5 -ml-1 rounded-lg text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 transition-all focus:outline-none shrink-0"
+            aria-label="Open settings menu"
+          >
+            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
+            </svg>
+          </button>
+          <span className="hover:text-zinc-800 cursor-pointer hidden xs:inline">Settings</span>
+          <ChevronRight className="h-3 w-3 text-zinc-300 hidden xs:inline" />
           <span className="text-zinc-800 font-extrabold">{pageName}</span>
         </div>
 
         {/* Right side tools */}
         <div className="flex items-center gap-4">
           {/* Notification bell button */}
-          <button className="h-8 w-8 rounded-lg flex items-center justify-center border border-zinc-200 bg-white hover:bg-zinc-50 text-zinc-600 transition-colors">
-            <Bell className="h-4 w-4" />
-          </button>
+          <NotificationDropdown />
 
           {/* Ask Button */}
           <button className="h-8 rounded-lg flex items-center gap-2 px-3 border border-zinc-200 bg-white hover:bg-zinc-50 text-xs font-bold text-zinc-700 transition-colors">

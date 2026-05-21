@@ -139,6 +139,20 @@ export async function POST(req: Request) {
         .eq('id', userId);
     }
 
+    // Insert DB notification for Hermes completion
+    try {
+      await supabaseAdmin.from('notifications').insert({
+        user_id: userId,
+        type: 'agent_cycle',
+        title: `Cycle Hermes Terminé`,
+        body: `L'agent Hermes a complété son cycle. ${leadsFound} leads qualifiés trouvés pour "${campaign.name}".`,
+        metadata: { campaignId, leadsFound, creditsUsed, query }
+      });
+      console.log(`[HERMES AGENT] Dispatched agent_cycle notification for user ${userId}`);
+    } catch (notifErr) {
+      console.error('[HERMES AGENT] Failed to dispatch agent_cycle notification:', notifErr);
+    }
+
     return NextResponse.json({
       message: `Hermes cycle complete. ${leadsFound} leads found.`,
       leads_found: leadsFound,

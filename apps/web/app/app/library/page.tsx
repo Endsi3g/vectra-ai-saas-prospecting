@@ -25,13 +25,16 @@ import {
   Search,
   ExternalLink,
   ChevronDown,
-  X
+  X,
+  Download
 } from 'lucide-react';
 import { 
   getCollections, 
   createCollection, 
   getLeads, 
   assignLeadToCollections,
+  getFollowUps,
+  getMessages,
   Collection,
   Lead
 } from '@/lib/db-fallback';
@@ -67,6 +70,98 @@ function LibraryPageContent() {
   const [showCreateCollectionInline, setShowCreateCollectionInline] = useState(false);
   const [newColName, setNewColName] = useState('');
   const [newColDesc, setNewColDesc] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
+
+  const handleExportCSV = async () => {
+    setIsExporting(true);
+    try {
+      // 1. Fetch followups and messages in parallel
+      const followUps = await getFollowUps();
+      const messagesPromises = filteredLeads.map(lead => getMessages(lead.id));
+      const messages = await Promise.all(messagesPromises);
+
+      // Create maps for quick lookup
+      const followUpMap = new Map(followUps.map(f => [f.leadId, f]));
+      const messageMap = new Map();
+      messages.forEach((msg, idx) => {
+        if (msg) {
+          messageMap.set(filteredLeads[idx].id, msg);
+        }
+      });
+
+      // 2. Build CSV Headers
+      const headers = [
+        'name',
+        'company',
+        'email',
+        'website',
+        'notes',
+        'follow_up_status',
+        'follow_up_date',
+        'personalization_score',
+        'message_status',
+        'collections'
+      ];
+
+      // Helper to escape values for CSV compatibility
+      const escapeCSV = (val: any) => {
+        if (val === undefined || val === null) return '';
+        let str = String(val).replace(/"/g, '""');
+        if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+          return `"${str}"`;
+        }
+        return str;
+      };
+
+      // 3. Build CSV Rows
+      const rows = filteredLeads.map(lead => {
+        const followUp = followUpMap.get(lead.id);
+        const msg = messageMap.get(lead.id);
+
+        const colNames = (lead.collections || [])
+          .map(colId => collections.find(c => c.id === colId)?.name)
+          .filter(Boolean)
+          .join('; ');
+
+        return [
+          escapeCSV(lead.name),
+          escapeCSV(lead.company),
+          escapeCSV(lead.email),
+          escapeCSV(lead.website),
+          escapeCSV(lead.notes),
+          escapeCSV(followUp?.status || 'prospect'),
+          escapeCSV(followUp?.followUpDate || ''),
+          escapeCSV(msg?.personalization_score || ''),
+          escapeCSV(msg?.status || ''),
+          escapeCSV(colNames)
+        ];
+      });
+
+      // Combine headers and rows
+      const csvContent = [
+        headers.join(','),
+        ...rows.map(row => row.join(','))
+      ].join('\n');
+
+      // 4. Download file
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      const filename = activeCollection 
+        ? `vectra_leads_${activeCollection.name.toLowerCase().replace(/\s+/g, '_')}.csv` 
+        : 'vectra_leads_all.csv';
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error('Error exporting CSV:', err);
+    } finally {
+      setIsExporting(false);
+    }
+  };
 
   const loadData = async () => {
     const allCols = await getCollections();
@@ -207,6 +302,18 @@ function LibraryPageContent() {
           <Button variant="outline" size="sm" className="h-8 text-xs gap-1.5 border-zinc-200 hover:bg-zinc-50">
             <Share2 className="h-3.5 w-3.5 text-zinc-500" />
             Share
+          </Button>
+
+          <Button 
+            variant="outline" 
+            size="sm" 
+            onClick={handleExportCSV} 
+            disabled={isExporting || filteredLeads.length === 0}
+            id="library-export-csv-btn"
+            className="h-8 text-xs gap-1.5 border-zinc-200 hover:bg-zinc-50 font-bold"
+          >
+            <Download className="h-3.5 w-3.5 text-zinc-500" />
+            {isExporting ? 'Exporting...' : 'Export CSV'}
           </Button>
 
           <Button 

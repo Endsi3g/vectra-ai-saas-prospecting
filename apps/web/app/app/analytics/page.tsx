@@ -41,6 +41,23 @@ export default function AnalyticsPage() {
     totalLeads: number;
     hasRealData: boolean;
   }>({ totalMessages: 0, approvedMessages: 0, totalLeads: 0, hasRealData: false });
+  const [brevoData, setBrevoData] = useState<any>(null);
+  const [loadingBrevo, setLoadingBrevo] = useState(true);
+
+  const fetchBrevoStats = async () => {
+    try {
+      setLoadingBrevo(true);
+      const res = await fetch('/api/brevo/stats');
+      if (res.ok) {
+        const data = await res.json();
+        setBrevoData(data);
+      }
+    } catch (err) {
+      console.error('Error fetching Brevo stats:', err);
+    } finally {
+      setLoadingBrevo(false);
+    }
+  };
 
   useEffect(() => {
     const fetchCampaignsList = async () => {
@@ -100,6 +117,7 @@ export default function AnalyticsPage() {
     };
 
     fetchCampaignsList();
+    fetchBrevoStats();
   }, []);
 
   const changeTimeframe = (t: '7d' | '30d' | 'all') => {
@@ -124,6 +142,7 @@ export default function AnalyticsPage() {
     setIsRefreshing(true);
     setIsTransitioning(true);
     captureAnalyticsEvent('analytics_refreshed', { timeframe: selectedTimeframe });
+    fetchBrevoStats();
     setTimeout(() => {
       setIsRefreshing(false);
       setIsTransitioning(false);
@@ -700,6 +719,136 @@ export default function AnalyticsPage() {
             </div>
           </CardContent>
         </Card>
+        </div>
+
+        {/* Brevo Email Marketing Stats Integration */}
+        <div id="analytics-brevo-section" className="space-y-4 max-w-5xl">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h3 className="text-base font-bold text-zinc-900 flex items-center gap-2">
+                <span className="text-primary font-black">✉️</span>
+                Email Marketing Integration (Brevo)
+              </h3>
+              <p className="text-xs text-zinc-500 mt-0.5">
+                Statistiques de diffusion et d'engagement synchronisées depuis votre compte Brevo.
+              </p>
+            </div>
+            <div>
+              {brevoData?.connected ? (
+                <Badge className="bg-emerald-50 text-emerald-700 border-emerald-200 text-xs font-bold py-1 px-2.5">
+                  ● Brevo Connected
+                </Badge>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-xs font-bold py-1 px-2.5">
+                    ⚠ Offline Fallback Mode
+                  </Badge>
+                  <Button 
+                    variant="link" 
+                    size="sm" 
+                    onClick={() => router.push('/app/settings')}
+                    className="text-xs text-primary font-bold hover:underline p-0 h-auto"
+                  >
+                    Connect API Key →
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {loadingBrevo ? (
+            <div className="bg-white border border-zinc-200 rounded-xl p-8 text-center text-xs text-zinc-500 font-semibold shadow-sm">
+              Chargement des statistiques Brevo...
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* Stats Cards Grid */}
+              <div className="grid gap-4 grid-cols-2 lg:grid-cols-5">
+                {/* Sent */}
+                <Card className="border-zinc-200 shadow-sm bg-white hover:border-zinc-300 transition-all">
+                  <CardContent className="p-4">
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Total Envoyés</span>
+                    <h4 className="text-xl font-black text-zinc-900 mt-1">{(brevoData?.stats?.sentCount || 0).toLocaleString()}</h4>
+                  </CardContent>
+                </Card>
+                {/* Delivered Rate */}
+                <Card className="border-zinc-200 shadow-sm bg-white hover:border-zinc-300 transition-all">
+                  <CardContent className="p-4">
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Taux de Délivrance</span>
+                    <h4 className="text-xl font-black text-zinc-900 mt-1">{brevoData?.stats?.deliveredRate || 0}%</h4>
+                  </CardContent>
+                </Card>
+                {/* Open Rate */}
+                <Card className="border-zinc-200 shadow-sm bg-white hover:border-zinc-300 transition-all">
+                  <CardContent className="p-4">
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Taux d'Ouverture</span>
+                    <h4 className="text-xl font-black text-zinc-900 mt-1">{brevoData?.stats?.openRate || 0}%</h4>
+                  </CardContent>
+                </Card>
+                {/* Click Rate */}
+                <Card className="border-zinc-200 shadow-sm bg-white hover:border-zinc-300 transition-all">
+                  <CardContent className="p-4">
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Taux de Clic</span>
+                    <h4 className="text-xl font-black text-zinc-900 mt-1">{brevoData?.stats?.clickRate || 0}%</h4>
+                  </CardContent>
+                </Card>
+                {/* Unsubscribe */}
+                <Card className="border-zinc-200 shadow-sm bg-white hover:border-zinc-300 transition-all">
+                  <CardContent className="p-4">
+                    <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-wider block">Désinscriptions</span>
+                    <h4 className="text-xl font-black text-zinc-900 mt-1">{brevoData?.stats?.unsubscribeRate || 0}%</h4>
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Campaigns Table */}
+              <Card className="border-zinc-200 shadow-sm bg-white overflow-hidden">
+                <CardHeader className="pb-3 border-b border-zinc-100">
+                  <CardTitle className="text-xs font-bold uppercase tracking-wider text-zinc-400">Campagnes Récentes Brevo</CardTitle>
+                </CardHeader>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left text-xs min-w-[600px]">
+                    <thead className="bg-zinc-50 border-b border-zinc-100 text-[10px] font-bold text-zinc-400 uppercase tracking-wider select-none">
+                      <tr>
+                        <th className="py-2.5 px-4">Nom de la Campagne</th>
+                        <th className="py-2.5 px-4 text-center">Status</th>
+                        <th className="py-2.5 px-4 text-center">Envoyés</th>
+                        <th className="py-2.5 px-4 text-center">Ouvertures</th>
+                        <th className="py-2.5 px-4 text-center">Clics</th>
+                        <th className="py-2.5 px-4 text-center">Date</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-zinc-100 font-medium">
+                      {(brevoData?.recentCampaigns || []).map((camp: any) => (
+                        <tr key={camp.id} className="hover:bg-zinc-50/50 transition-colors">
+                          <td className="py-3 px-4 font-bold text-zinc-900">{camp.name}</td>
+                          <td className="py-3 px-4 text-center">
+                            <Badge variant="secondary" className="bg-blue-50 text-blue-700 border-blue-100 text-[10px]">
+                              {camp.status}
+                            </Badge>
+                          </td>
+                          <td className="py-3 px-4 text-center text-zinc-700">{camp.sent?.toLocaleString() || 0}</td>
+                          <td className="py-3 px-4 text-center text-zinc-700">
+                            {camp.opens?.toLocaleString() || 0}
+                            {camp.openRate !== undefined && (
+                              <span className="text-[10px] text-zinc-400 ml-1">({camp.openRate}%)</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-center text-zinc-700">
+                            {camp.clicks?.toLocaleString() || 0}
+                            {camp.clickRate !== undefined && (
+                              <span className="text-[10px] text-zinc-400 ml-1">({camp.clickRate}%)</span>
+                            )}
+                          </td>
+                          <td className="py-3 px-4 text-center text-zinc-500 font-mono">{camp.date}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </Card>
+            </div>
+          )}
         </div>
 
       </div>
