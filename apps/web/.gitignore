@@ -20,6 +20,12 @@ dist/
 extract_*.js
 find_*.js
 fix_*.js
+get_*.js
+inspect_*.js
+list_*.js
+print_*.js
+scan_*.js
+search_*.js
 test_*.js
 
 # Misc
