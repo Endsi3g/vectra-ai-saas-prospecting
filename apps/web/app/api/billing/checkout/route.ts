@@ -1,13 +1,20 @@
 import { NextResponse } from 'next/server';
 import Stripe from 'stripe';
+import { getAuthenticatedUser } from '@/lib/auth-helper';
 
 export async function POST(req: Request) {
   try {
-    const body = await req.json();
-    const { userId, plan } = body;
+    const authUser = await getAuthenticatedUser(req);
+    if (!authUser) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    }
 
-    if (!userId || !plan) {
-      return NextResponse.json({ error: 'User ID and Plan are required.' }, { status: 400 });
+    const body = await req.json();
+    const { plan } = body;
+    const userId = authUser.id;
+
+    if (!plan) {
+      return NextResponse.json({ error: 'Plan requis.' }, { status: 400 });
     }
 
     const stripeSecretKey = process.env.STRIPE_SECRET_KEY;
@@ -40,11 +47,11 @@ export async function POST(req: Request) {
         },
       });
 
-      console.log(`[STRIPE SESSION CREATED] Session ID: ${session.id} for User: ${userId}, Plan: ${plan}`);
+      console.log('[STRIPE SESSION CREATED] Checkout session created.');
       return NextResponse.json({ url: session.url });
     } else {
       // Local development or Testing mock redirection fallback
-      console.log(`[STRIPE MOCK] Creating mock checkout session for user ${userId} and plan ${plan}`);
+      console.log('[STRIPE MOCK] Creating mock checkout session.');
       const successUrl = `${req.headers.get('origin') || 'http://localhost:3000'}/app?billing_status=success&plan=${plan}`;
       return NextResponse.json({ 
         url: successUrl,
