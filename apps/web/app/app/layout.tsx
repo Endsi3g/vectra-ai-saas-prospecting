@@ -96,6 +96,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [creditsCount, setCreditsCount] = useState<number>(2000);
   const [creditsLimit, setCreditsLimit] = useState<number>(2000);
+  const [userPlan, setUserPlan] = useState<string>('alpha_free');
 
   // Collections & Custom Interactive States
   const [collections, setCollections] = useState<any[]>([]);
@@ -185,7 +186,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           
           const { data: profile } = await supabase
             .from('profiles')
-            .select('tour_completed, credits_count, credits_limit')
+            .select('tour_completed, credits_count, credits_limit, plan')
             .eq('id', user.id)
             .single();
 
@@ -198,6 +199,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             }
             if (profile.credits_limit !== undefined && profile.credits_limit !== null) {
               setCreditsLimit(profile.credits_limit);
+            }
+            if (profile.plan) {
+              setUserPlan(profile.plan);
             }
           } else {
             const localTourCompleted = localStorage.getItem('tour_completed') === 'true';
@@ -370,17 +374,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     return (
       <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-50 select-none text-zinc-950 font-sans">
         {/* Unified Orange Trial Announcement Bar */}
-        <div className="relative w-full border-b border-orange-100 flex items-center justify-center py-2 px-4 z-20 bg-pattern shrink-0 select-none">
-          <div className="absolute inset-0 bg-white/60 pointer-events-none"></div>
-          
-          <div className="relative flex items-center justify-center gap-2 text-orange-600 font-medium text-xs sm:text-sm">
-            <svg className="w-4 h-4 shrink-0 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <span className="truncate max-w-[280px] xs:max-w-none">Your Starter trial is over. Upgrade to keep finding candidates, exporting collections, and sharing with your team.</span>
-            <Link href="/app/settings/plans" className="font-semibold underline hover:text-orange-700 ml-1 transition-colors whitespace-nowrap">Explore plans</Link>
+        {userPlan === 'alpha_free' && (
+          <div className="relative w-full border-b border-orange-100 flex items-center justify-center py-2 px-4 z-20 bg-pattern shrink-0 select-none">
+            <div className="absolute inset-0 bg-white/60 pointer-events-none"></div>
+
+            <div className="relative flex items-center justify-center gap-2 text-orange-600 font-medium text-xs sm:text-sm">
+              <svg className="w-4 h-4 shrink-0 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+              </svg>
+              <span className="truncate max-w-[280px] xs:max-w-none">Your Starter trial is over. Upgrade to keep finding candidates, exporting collections, and sharing with your team.</span>
+              <Link href="/app/settings/plans" className="font-semibold underline hover:text-orange-700 ml-1 transition-colors whitespace-nowrap">Explore plans</Link>
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Lower container containing Sidebar and Main Area */}
         <div className="flex-1 flex overflow-hidden relative">
@@ -454,17 +460,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-zinc-50 select-none text-zinc-950 font-sans">
       
       {/* Unified Orange Trial Announcement Bar */}
-      <div className="relative w-full border-b border-orange-100 flex items-center justify-center py-2 px-4 z-20 bg-pattern shrink-0 select-none">
-        <div className="absolute inset-0 bg-white/60 pointer-events-none"></div>
-        
-        <div className="relative flex items-center justify-center gap-2 text-orange-600 font-medium text-xs sm:text-sm">
-          <svg className="w-4 h-4 shrink-0 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-          </svg>
-          <span className="truncate max-w-[280px] xs:max-w-none">Your Starter trial is over. Upgrade to keep finding candidates, exporting collections, and sharing with your team.</span>
-          <Link href="/app/settings/plans" className="font-semibold underline hover:text-orange-700 ml-1 transition-colors whitespace-nowrap">Explore plans</Link>
+      {userPlan === 'alpha_free' && (
+        <div className="relative w-full border-b border-orange-100 flex items-center justify-center py-2 px-4 z-20 bg-pattern shrink-0 select-none">
+          <div className="absolute inset-0 bg-white/60 pointer-events-none"></div>
+
+          <div className="relative flex items-center justify-center gap-2 text-orange-600 font-medium text-xs sm:text-sm">
+            <svg className="w-4 h-4 shrink-0 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span className="truncate max-w-[280px] xs:max-w-none">Your Starter trial is over. Upgrade to keep finding candidates, exporting collections, and sharing with your team.</span>
+            <Link href="/app/settings/plans" className="font-semibold underline hover:text-orange-700 ml-1 transition-colors whitespace-nowrap">Explore plans</Link>
+          </div>
         </div>
-      </div>
+      )}
 
       <div className="flex flex-1 overflow-hidden relative">
         {/* Mobile Overlay backdrop */}
@@ -606,28 +614,28 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             )}
 
             {/* Trial Progress Bar Widget */}
-            {!isCollapsed ? (
+            {userPlan === 'alpha_free' && (!isCollapsed ? (
               <div className="relative overflow-hidden mb-3 p-3 rounded-lg border border-orange-100 shadow-sm bg-white select-none">
                 <div className="absolute inset-0 bg-pattern opacity-30 pointer-events-none"></div>
                 <div className="absolute top-0 left-0 w-full h-8 bg-gradient-to-b from-green-50/50 to-transparent pointer-events-none"></div>
-                
+
                 <div className="relative z-10 space-y-2">
                   <h4 className="font-medium text-zinc-900 text-xs leading-none">Your Starter trial is complete</h4>
                   <p className="text-zinc-500 text-[11px] leading-tight">You've used all 7 days of your trial, upgrade to continue using all features.</p>
-                  
+
                   <div className="w-full bg-zinc-100 rounded-full h-1.5 overflow-hidden border border-zinc-200/50">
                     <div className="bg-gradient-to-r from-orange-400 to-orange-500 h-1.5 rounded-full w-full"></div>
                   </div>
                 </div>
               </div>
             ) : (
-              <div 
+              <div
                 className="flex justify-center h-8 w-8 items-center rounded-lg bg-orange-50 text-orange-700 border border-orange-200 text-[10px] font-extrabold mx-auto cursor-help mb-2"
                 title="Your Starter trial is complete. Upgrade to continue."
               >
                 100%
               </div>
-            )}
+            ))}
             {isCollapsed ? (
               <div className="flex flex-col items-center gap-3 pb-2 pt-1 border-t border-zinc-150">
                 <NotificationDropdown />

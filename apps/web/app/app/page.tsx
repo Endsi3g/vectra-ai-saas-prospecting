@@ -81,6 +81,24 @@ export default function DashboardPage() {
           });
           if (dailyCounts.some(v => v > 0)) setChartDailyData(dailyCounts);
 
+          // Build weekly chart data (last 7 weeks)
+          const sevenWeeksAgo = new Date();
+          sevenWeeksAgo.setDate(sevenWeeksAgo.getDate() - 49);
+          const { data: weeklyLeadsData } = await supabase
+            .from('leads')
+            .select('created_at')
+            .in('campaign_id', campaignIds)
+            .gte('created_at', sevenWeeksAgo.toISOString());
+          const weeklyCounts = [0, 0, 0, 0, 0, 0, 0];
+          (weeklyLeadsData || []).forEach((lead: any) => {
+            const leadDate = new Date(lead.created_at);
+            const weekDiff = Math.floor((Date.now() - leadDate.getTime()) / (1000 * 60 * 60 * 24 * 7));
+            if (weekDiff >= 0 && weekDiff < 7) {
+              weeklyCounts[6 - weekDiff] = (weeklyCounts[6 - weekDiff] || 0) + 1;
+            }
+          });
+          if (weeklyCounts.some(v => v > 0)) setChartWeeklyData(weeklyCounts);
+
           const leadIds = (leadsForOutreachRes.data || []).map((l: any) => l.id);
           if (leadIds.length > 0) {
             const { count: outreachCount } = await supabase

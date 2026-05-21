@@ -70,12 +70,20 @@ export default function OnboardingPage() {
   }, []);
 
   const handleConnectMailbox = (provider: 'gmail' | 'outlook' | 'icloud') => {
+    if (provider === 'gmail') {
+      window.location.href = '/api/auth/nylas/checkout?provider=google';
+      return;
+    }
+    if (provider === 'outlook') {
+      window.location.href = '/api/auth/nylas/checkout?provider=microsoft';
+      return;
+    }
+    // iCloud/IMAP: simulate for now
     setMailboxProvider(provider);
     setConnectingMailbox(true);
     setTimeout(() => {
       setMailboxConnected(true);
       setConnectingMailbox(false);
-      // Auto-advance after successful connection simulation
       setTimeout(() => setStep(4), 800);
     }, 1500);
   };
