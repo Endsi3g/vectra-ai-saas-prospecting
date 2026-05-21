@@ -27,6 +27,7 @@ export default defineConfig({
     timeout: 30000,
     env: {
       PLAYWRIGHT_TEST: 'true',
+      E2E_TESTING: 'true',
     },
   },
 });

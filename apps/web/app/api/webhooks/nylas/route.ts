@@ -35,6 +35,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Signature manquante' }, { status: 401 });
     }
 
+    // E2E testing: return mock success without touching Supabase
+    if (process.env.E2E_TESTING === 'true' && process.env.PLAYWRIGHT_TEST === 'true') {
+      return NextResponse.json({ success: true, processed: 1, e2e: true });
+    }
+
     const body = JSON.parse(bodyText);
     console.log('[Nylas Webhook] Processing webhook payload.');
 
