@@ -18,6 +18,7 @@ CREATE POLICY "Users can manage workspaces they are part of"
 -- Create public.profiles table
 CREATE TABLE public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email TEXT,
     first_name TEXT,
     last_name TEXT,
     workspace_id UUID REFERENCES public.workspaces(id) ON DELETE SET NULL,
@@ -32,6 +33,7 @@ CREATE TABLE public.profiles (
     plan TEXT DEFAULT 'alpha_free',
     stripe_customer_id TEXT,
     stripe_subscription_id TEXT,
+    agent_config JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -64,8 +66,8 @@ CREATE POLICY "Users can view and edit their own profiles"
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-    INSERT INTO public.profiles (id)
-    VALUES (new.id);
+    INSERT INTO public.profiles (id, email)
+    VALUES (new.id, new.email);
     RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

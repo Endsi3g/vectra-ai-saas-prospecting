@@ -21,10 +21,10 @@ export default function MarketingLandingPage() {
                 <div className="flex items-center gap-2">
                     <svg className="w-6 h-6 text-emerald-500" viewBox="0 0 24 24" fill="currentColor">
                         <rect x="3" y="3" width="8" height="8" rx="2" />
-                        <rect x="13" y="3" width="8" height="8" rx="2" fill-opacity="0.5" />
-                        <rect x="3" y="13" width="8" height="8" rx="2" fill-opacity="0.5" />
+                        <rect x="13" y="3" width="8" height="8" rx="2" fillOpacity="0.5" />
+                        <rect x="3" y="13" width="8" height="8" rx="2" fillOpacity="0.5" />
                     </svg>
-                    <span className="text-xl font-bold tracking-tight text-zinc-900">Wrangle</span>
+                    <span className="text-xl font-bold tracking-tight text-zinc-900">Vectra</span>
                 </div>
 
                 <nav className="hidden md:flex items-center gap-8 text-[15px] font-medium text-zinc-600">
@@ -34,7 +34,7 @@ export default function MarketingLandingPage() {
                 </nav>
 
                 <div className="flex items-center gap-5 text-[15px] font-medium">
-                    <Link href="/auth/sign-in" className="hidden lg:block text-zinc-600 hover:text-zinc-900 transition-colors">Get a Demo</Link>
+                    <Link href="/app?bypass=true" className="hidden lg:block text-zinc-600 hover:text-zinc-900 transition-colors">Voir la démo</Link>
                     <Link href="/auth/sign-in" className="text-zinc-600 hover:text-zinc-900 transition-colors">Log In</Link>
                     <Link href="/auth/sign-up" className="flex items-center gap-1.5 px-4 py-2 bg-white border border-zinc-200 rounded-full shadow-sm hover:bg-zinc-50 transition-colors text-zinc-900 font-semibold">
                         Get started
@@ -48,24 +48,29 @@ export default function MarketingLandingPage() {
                 
                 {/* Announcement Badge */}
                 <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-white border border-zinc-200 shadow-sm text-xs font-medium text-zinc-600 mb-8 hover:bg-zinc-50 cursor-pointer transition-colors">
-                    <span className="text-lg leading-none">📢</span> April 27: Introducing our API and MCP
+                    <span className="text-lg leading-none">🚀</span> Nouveau : accès API & MCP disponible dès maintenant
                 </div>
 
                 {/* H1 Heading */}
                 <h1 className="text-5xl md:text-[64px] leading-tight font-semibold tracking-tight text-zinc-900 mb-6">
-                    From Search to Shortlist in Minutes
+                    De la Recherche au Lead Qualifié en Minutes
                 </h1>
 
                 {/* Subheading */}
                 <p className="text-lg md:text-xl text-zinc-500 mb-10 max-w-2xl mx-auto leading-relaxed">
-                    Wrangle lets you source in natural language, engage candidates at scale, and interview with intelligence.
+                    Vectra vous permet de sourcer en langage naturel, d'engager vos prospects à grande échelle, et d'automatiser votre pipeline de prospection B2B.
                 </p>
 
                 {/* Get started button */}
-                <Link href="/auth/sign-up" className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border border-zinc-200 shadow-sm text-base font-semibold rounded-full text-zinc-900 hover:bg-zinc-50 transition-all hover:shadow-md">
-                    Get Started
-                    <ArrowRight className="w-4 h-4 text-zinc-400" />
-                </Link>
+                <div className="flex flex-wrap justify-center gap-3">
+                  <Link href="/auth/sign-up" className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-zinc-900 text-white text-base font-semibold rounded-full hover:bg-zinc-800 transition-all hover:shadow-md">
+                      Démarrer gratuitement
+                      <ArrowRight className="w-4 h-4" />
+                  </Link>
+                  <Link href="/app?bypass=true" className="inline-flex items-center justify-center gap-2 px-6 py-3 bg-white border border-zinc-200 shadow-sm text-base font-semibold rounded-full text-zinc-900 hover:bg-zinc-50 transition-all hover:shadow-md">
+                      Voir la démo live
+                  </Link>
+                </div>
             </main>
 
             {/* Premium Mockup Glassmorphism Wrapper */}
@@ -83,17 +88,15 @@ export default function MarketingLandingPage() {
 
         </div>
 
-        {/* Social Proof Partners */}
-        <div className="max-w-5xl mx-auto py-8 px-4 flex flex-wrap justify-center items-center gap-x-12 gap-y-8 opacity-60 grayscale select-none">
-            <div className="text-xl font-bold tracking-tighter text-zinc-400">chime</div>
-            <div className="text-xl font-bold flex items-center gap-1 text-zinc-400">
-                <svg className="w-5 h-5 text-zinc-400" fill="currentColor" viewBox="0 0 24 24">
-                  <path d="M12 2L2 22h20L12 2z"/>
-                </svg>
-                Serval
+        {/* Social Proof */}
+        <div className="max-w-5xl mx-auto py-8 px-4 text-center select-none">
+            <p className="text-sm font-medium text-zinc-400 mb-4">Utilisé par des fondateurs et équipes de vente B2B dans toute la francophonie</p>
+            <div className="flex flex-wrap justify-center items-center gap-x-10 gap-y-4 opacity-50 grayscale">
+                <div className="text-base font-bold tracking-tight text-zinc-500">SaaS Founders</div>
+                <div className="text-base font-bold text-zinc-500">Agences Growth</div>
+                <div className="text-base font-bold text-zinc-500">Consultants B2B</div>
+                <div className="text-base font-bold text-zinc-500">Startups Tech</div>
             </div>
-            <div className="text-xl font-bold text-zinc-400">Lightspeed</div>
-            <div className="text-xl font-bold tracking-widest text-zinc-400">SULLY.AI</div>
         </div>
 
         {/* Features Section */}
@@ -103,7 +106,7 @@ export default function MarketingLandingPage() {
               Tout ce qu'il vous faut pour prospecter efficacement
             </h2>
             <p className="text-zinc-500 text-lg max-w-xl mx-auto">
-              Wrangle automatise chaque étape de votre cycle de prospection B2B.
+              Vectra automatise chaque étape de votre cycle de prospection B2B.
             </p>
           </div>
 
@@ -182,30 +185,94 @@ export default function MarketingLandingPage() {
           </div>
         </section>
 
-        {/* Final CTA */}
+        {/* Pricing Section */}
         <section id="pricing" className="py-16 px-6">
-          <div className="max-w-2xl mx-auto text-center">
-            <div className="bg-[#FAFBFC] border border-zinc-200/60 rounded-3xl p-12 shadow-sm">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-12">
               <h2 className="text-3xl sm:text-4xl font-bold tracking-tight text-zinc-900 mb-4">
-                Prêt à transformer votre prospection ?
+                Tarifs simples et transparents
               </h2>
-              <p className="text-zinc-500 mb-8 leading-relaxed">
-                Commencez gratuitement avec 50 leads. Aucune carte bancaire requise.
+              <p className="text-zinc-500 text-lg max-w-xl mx-auto">
+                Commencez gratuitement. Passez au plan supérieur quand vous êtes prêt.
               </p>
-              <div className="flex flex-wrap justify-center gap-3">
-                <Link href="/auth/sign-up">
-                  <Button size="lg" className="bg-zinc-900 text-white font-bold px-8 h-12 shadow-md hover:bg-zinc-800 hover:-translate-y-0.5 transition-all duration-200">
-                    Créer mon compte gratuit
-                    <ArrowRight className="ml-2 h-4 w-4" />
-                  </Button>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-6">
+              {/* Free Plan */}
+              <div className="bg-white border border-zinc-200 rounded-2xl p-8 flex flex-col">
+                <div className="mb-6">
+                  <p className="text-sm font-semibold text-zinc-500 uppercase tracking-wider mb-2">Gratuit</p>
+                  <div className="flex items-end gap-1 mb-4">
+                    <span className="text-4xl font-extrabold text-zinc-900">0 $</span>
+                    <span className="text-zinc-400 mb-1">/mois</span>
+                  </div>
+                  <p className="text-sm text-zinc-500">Pour découvrir Vectra et tester le potentiel de l'IA de prospection.</p>
+                </div>
+                <ul className="space-y-3 flex-1 mb-8">
+                  {['2 000 crédits de sourcing', '1 campagne active', 'Import CSV', 'Génération de messages IA', 'Accès à l\'inbox unifié'].map(f => (
+                    <li key={f} className="flex items-start gap-2 text-sm text-zinc-600">
+                      <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/auth/sign-up" className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-zinc-200 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 transition-colors">
+                  Démarrer gratuitement
                 </Link>
-                <Link href="/app?bypass=true">
-                  <Button size="lg" variant="outline" className="px-8 h-12 bg-white border border-zinc-200 hover:-translate-y-0.5 transition-all duration-200">
-                    Voir la démo
-                  </Button>
+              </div>
+
+              {/* Starter Plan */}
+              <div className="bg-zinc-950 border border-zinc-800 rounded-2xl p-8 flex flex-col relative overflow-hidden">
+                <div className="absolute top-4 right-4 bg-emerald-500 text-white text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-wider">Populaire</div>
+                <div className="mb-6">
+                  <p className="text-sm font-semibold text-zinc-400 uppercase tracking-wider mb-2">Starter</p>
+                  <div className="flex items-end gap-1 mb-4">
+                    <span className="text-4xl font-extrabold text-white">199 $</span>
+                    <span className="text-zinc-400 mb-1">/mois</span>
+                  </div>
+                  <p className="text-sm text-zinc-400">Pour les solopreneurs et freelances qui veulent automatiser leur prospection.</p>
+                </div>
+                <ul className="space-y-3 flex-1 mb-8">
+                  {['5 000 crédits/mois', 'Campagnes illimitées', 'Agents Hermes & Apollo', 'Inbox avec Magic Reply IA', 'Connecteur Gmail & Outlook', 'Export CSV & intégrations', 'Suivi pipeline complet'].map(f => (
+                    <li key={f} className="flex items-start gap-2 text-sm text-zinc-300">
+                      <Check className="w-4 h-4 text-emerald-400 mt-0.5 shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/auth/sign-up" className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-500 text-sm font-bold text-white hover:bg-emerald-600 transition-colors">
+                  Commencer avec Starter
+                  <ArrowRight className="w-4 h-4" />
+                </Link>
+              </div>
+
+              {/* Scale Plan */}
+              <div className="bg-white border border-zinc-200 rounded-2xl p-8 flex flex-col">
+                <div className="mb-6">
+                  <p className="text-sm font-semibold text-zinc-500 uppercase tracking-wider mb-2">Scale</p>
+                  <div className="flex items-end gap-1 mb-4">
+                    <span className="text-4xl font-extrabold text-zinc-900">499 $</span>
+                    <span className="text-zinc-400 mb-1">/mois</span>
+                  </div>
+                  <p className="text-sm text-zinc-500">Pour les agences et équipes commerciales qui scalent leur prospection.</p>
+                </div>
+                <ul className="space-y-3 flex-1 mb-8">
+                  {['20 000 crédits/mois', 'Tout Starter inclus', 'Multi-membres (jusqu\'à 5)', 'Agents autonomes complets', 'Analytics avancées', 'API & MCP access', 'Support prioritaire', 'Branding workspace'].map(f => (
+                    <li key={f} className="flex items-start gap-2 text-sm text-zinc-600">
+                      <Check className="w-4 h-4 text-emerald-500 mt-0.5 shrink-0" />
+                      {f}
+                    </li>
+                  ))}
+                </ul>
+                <Link href="/auth/sign-up" className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl border border-zinc-200 text-sm font-semibold text-zinc-900 hover:bg-zinc-50 transition-colors">
+                  Commencer avec Scale
                 </Link>
               </div>
             </div>
+
+            <p className="text-center text-xs text-zinc-400 mt-8">
+              Tous les prix en USD. Annulation à tout moment. Paiement sécurisé via Stripe.
+            </p>
           </div>
         </section>
 
@@ -216,13 +283,13 @@ export default function MarketingLandingPage() {
               <div className="flex items-center gap-2">
                 <svg className="w-6 h-6 text-emerald-500" viewBox="0 0 24 24" fill="currentColor">
                     <rect x="3" y="3" width="8" height="8" rx="2" />
-                    <rect x="13" y="3" width="8" height="8" rx="2" fill-opacity="0.5" />
-                    <rect x="3" y="13" width="8" height="8" rx="2" fill-opacity="0.5" />
+                    <rect x="13" y="3" width="8" height="8" rx="2" fillOpacity="0.5" />
+                    <rect x="3" y="13" width="8" height="8" rx="2" fillOpacity="0.5" />
                 </svg>
-                <span className="font-bold text-zinc-900">Wrangle</span>
+                <span className="font-bold text-zinc-900">Vectra</span>
               </div>
               <p className="text-zinc-400 text-xs max-w-xs leading-relaxed">
-                Plateforme AI de prospection B2B — automatisez vos outreach et boostez vos conversions.
+                Plateforme IA de prospection B2B — automatisez vos outreach et boostez vos conversions.
               </p>
             </div>
             <div className="flex gap-12 text-xs text-zinc-400">
@@ -230,17 +297,17 @@ export default function MarketingLandingPage() {
                 <p className="font-semibold text-zinc-600 mb-3">Produit</p>
                 <Link href="#features" className="block hover:text-zinc-900 transition-colors">Fonctionnalités</Link>
                 <Link href="#pricing" className="block hover:text-zinc-900 transition-colors">Tarifs</Link>
-                <Link href="/app?bypass=true" className="block hover:text-zinc-900 transition-colors">Démo</Link>
+                <Link href="/app?bypass=true" className="block hover:text-zinc-900 transition-colors">Démo live</Link>
               </div>
               <div className="space-y-2">
                 <p className="font-semibold text-zinc-600 mb-3">Légal</p>
-                <Link href="#" className="block hover:text-zinc-900 transition-colors">Conditions</Link>
-                <Link href="#" className="block hover:text-zinc-900 transition-colors">Confidentialité</Link>
+                <Link href="/legal/terms" className="block hover:text-zinc-900 transition-colors">Conditions</Link>
+                <Link href="/legal/privacy" className="block hover:text-zinc-900 transition-colors">Confidentialité</Link>
               </div>
             </div>
           </div>
           <div className="max-w-7xl mx-auto px-6 pt-8 mt-8 border-t border-zinc-100">
-            <p className="text-xs text-zinc-400">&copy; {new Date().getFullYear()} Wrangle Inc. Tous droits réservés.</p>
+            <p className="text-xs text-zinc-400">&copy; {new Date().getFullYear()} Vectra OS Inc. Tous droits réservés.</p>
           </div>
         </footer>
 
