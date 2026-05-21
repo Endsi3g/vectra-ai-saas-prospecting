@@ -92,23 +92,34 @@ npm install
 Create `apps/web/.env.local`:
 ```env
 # Supabase
-NEXT_PUBLIC_SUPABASE_URL=your_supabase_url
-NEXT_PUBLIC_SUPABASE_ANON_KEY=your_anon_key
+NEXT_PUBLIC_SUPABASE_URL=https://xxxx.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJ...
+NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY=eyJ...
+SUPABASE_SERVICE_ROLE_KEY=eyJ...
 
 # Nylas V3
-NYLAS_CLIENT_ID=d12165a7-6c3b-4efc-a754-e9fdb60833fe
-NYLAS_CLIENT_SECRET=your_nylas_api_key
+NYLAS_CLIENT_ID=your_nylas_client_id
+NYLAS_CLIENT_SECRET=your_nylas_client_secret
 NYLAS_REDIRECT_URI=http://localhost:3000/api/auth/nylas/callback
 
-# OpenRouter
-OPENROUTER_API_KEY=your_openrouter_key
+# AI — at least one required (app works in mock mode without either)
+OPENROUTER_API_KEY=sk-or-v1-...
+OPENAI_API_KEY=sk-...
 
 # Stripe
-STRIPE_SECRET_KEY=your_stripe_key
-STRIPE_WEBHOOK_SECRET=your_webhook_secret
+STRIPE_SECRET_KEY=sk_test_...
+STRIPE_WEBHOOK_SECRET=whsec_...
+STRIPE_PRICE_SOLO=price_...
+STRIPE_PRICE_AGENCY=price_...
 
-# Resend
-RESEND_API_KEY=your_resend_key
+# Optional services
+RESEND_API_KEY=re_...
+SERPER_API_KEY=...
+NEXT_PUBLIC_SENTRY_DSN=https://...@sentry.io/...
+NEXT_PUBLIC_POSTHOG_KEY=phc_...
+
+# Site URL
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
 ```
 
 ### Run Dev Server
@@ -121,6 +132,68 @@ Open [http://localhost:3000](http://localhost:3000)
 ```bash
 npm run build
 ```
+
+---
+
+## Quick Setup — One-Shot Deployment Guide 🚀
+
+### Step 1 — Supabase (15 min)
+1. Go to https://app.supabase.com → New Project (name: `vectra-os`, region: `us-east-1`)
+2. Settings → API → copy:
+   - `URL` → `NEXT_PUBLIC_SUPABASE_URL`
+   - `anon public` → `NEXT_PUBLIC_SUPABASE_ANON_KEY` + `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`
+   - `service_role` → `SUPABASE_SERVICE_ROLE_KEY` (keep secret)
+3. SQL Editor → run in order:
+   - `supabase/migrations/20260520000000_init.sql`
+   - `supabase/migrations/20260521000001_add_brevo_and_api_keys.sql`
+   - `supabase/migrations/20260521000002_add_activity_logs_and_comments.sql`
+4. Authentication → Settings → disable "Email confirmations" for dev
+
+### Step 2 — OpenRouter (5 min) — minimum required for AI
+1. https://openrouter.ai → Account → API Keys → Create Key
+2. Copy → `OPENROUTER_API_KEY=sk-or-v1-...`
+3. Note: Free models available (e.g. `meta-llama/llama-3-8b-instruct`)
+4. Without any AI key, the app runs in template mock mode — no crash
+
+### Step 3 — Nylas V3 (20 min) — for mailbox OAuth
+1. https://dashboard.nylas.com → New Application
+2. Enable Google + Microsoft providers
+3. Redirect URIs → add: `https://your-domain.com/api/auth/nylas/callback`
+4. Copy: `Client ID` → `NYLAS_CLIENT_ID`, `Client Secret` → `NYLAS_CLIENT_SECRET`
+5. Without Nylas credentials, the app runs a mock OAuth loop — no crash
+
+### Step 4 — Stripe (30 min) — for billing
+1. https://dashboard.stripe.com → Developers → API Keys → copy Secret key
+2. Products → create two recurring products:
+   - "Starter Plan" $199/mo → copy Price ID → `STRIPE_PRICE_SOLO`
+   - "Scale Plan" $499/mo → copy Price ID → `STRIPE_PRICE_AGENCY`
+3. Webhooks → Add Endpoint: `https://your-domain.com/api/webhooks/stripe`
+   - Events: `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
+   - Copy Signing Secret → `STRIPE_WEBHOOK_SECRET`
+
+### Step 5 — Optional Services
+| Service | Variable | Purpose |
+|---------|----------|---------|
+| Resend | `RESEND_API_KEY` | Transactional email |
+| Serper.dev | `SERPER_API_KEY` | Google search for sourcing |
+| Sentry | `NEXT_PUBLIC_SENTRY_DSN` | Error monitoring |
+| PostHog | `NEXT_PUBLIC_POSTHOG_KEY` | Product analytics |
+
+All optional — app gracefully degrades without them.
+
+### Step 6 — Deploy to Vercel (10 min)
+1. https://vercel.com → Import Git Repository → `Endsi3g/vectra-ai-saas-prospecting`
+2. Framework: Next.js, Root Directory: `apps/web`
+3. Environment Variables → add all variables above (with production URLs)
+4. Deploy → copy the Vercel URL → update `NEXT_PUBLIC_SITE_URL` + Supabase Auth URLs + Nylas Redirect URI
+
+### Offline / Zero-Config Mode
+The app starts cleanly without any environment variables:
+- Supabase: mock session + local fallback data
+- AI: template-based outreach messages (no API call)
+- Nylas: mock OAuth loop (callback simulated)
+- Stripe: pricing pages visible, checkout mocked
+- Sentry/PostHog: silently disabled
 
 ---
 
