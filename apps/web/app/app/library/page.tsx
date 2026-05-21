@@ -26,7 +26,8 @@ import {
   ExternalLink,
   ChevronDown,
   X,
-  Download
+  Download,
+  MessageSquare
 } from 'lucide-react';
 import { 
   getCollections, 
@@ -38,6 +39,7 @@ import {
   Collection,
   Lead
 } from '@/lib/db-fallback';
+import LeadCommentsDrawer from '@/components/LeadCommentsDrawer';
 
 const LinkedinIcon = (props: React.SVGProps<SVGSVGElement>) => (
   <svg
@@ -72,6 +74,10 @@ function LibraryPageContent() {
   const [newColDesc, setNewColDesc] = useState('');
   const [isExporting, setIsExporting] = useState(false);
 
+  // Comments Drawer States
+  const [selectedLeadForComments, setSelectedLeadForComments] = useState<Lead | null>(null);
+  const [isCommentsDrawerOpen, setIsCommentsDrawerOpen] = useState(false);
+
   const handleExportCSV = async () => {
     setIsExporting(true);
     try {
@@ -85,7 +91,8 @@ function LibraryPageContent() {
       const messageMap = new Map();
       messages.forEach((msg, idx) => {
         if (msg) {
-          messageMap.set(filteredLeads[idx].id, msg);
+          const lead = filteredLeads[idx];
+          if (lead) messageMap.set(lead.id, msg);
         }
       });
 
@@ -251,6 +258,7 @@ function LibraryPageContent() {
   });
 
   return (
+    <>
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-white text-zinc-950 font-sans">
       
       {/* Header */}
@@ -479,6 +487,19 @@ function LibraryPageContent() {
                         {/* Actions & Popover Trigger Column */}
                         <td className="py-3.5 px-4 text-right align-top relative">
                           <div className="flex items-center justify-end gap-1.5">
+                            {/* Comments drawer button */}
+                            <Button
+                              size="icon"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedLeadForComments(lead);
+                                setIsCommentsDrawerOpen(true);
+                              }}
+                              className="h-7 w-7 border-zinc-200 hover:bg-emerald-50 hover:border-emerald-300"
+                              title="Discussions et notes"
+                            >
+                              <MessageSquare className="h-3.5 w-3.5 text-zinc-500" />
+                            </Button>
                             {/* Toggle Folder assignment button */}
                             <Button 
                               size="icon" 
@@ -701,6 +722,17 @@ function LibraryPageContent() {
       </div>
 
     </div>
+
+      {/* Lead Comments Slide-over Drawer */}
+      <LeadCommentsDrawer
+        lead={selectedLeadForComments}
+        isOpen={isCommentsDrawerOpen}
+        onClose={() => {
+          setIsCommentsDrawerOpen(false);
+          setSelectedLeadForComments(null);
+        }}
+      />
+    </>
   );
 }
 

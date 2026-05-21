@@ -20,6 +20,8 @@ import {
   AlertCircle
 } from 'lucide-react';
 
+import ActivityFeedWidget from '@/components/ActivityFeedWidget';
+
 export default function DashboardPage() {
   const router = useRouter();
   const [userName, setUserName] = useState('');
@@ -272,161 +274,168 @@ export default function DashboardPage() {
         </div>
 
         {/* Double Panel Layout */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-8">
           
-          {/* Left panel: Collections list */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between select-none">
-              <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Saved Collections</h3>
-              <Button variant="ghost" size="sm" className="h-7 text-xs font-bold text-primary hover:text-primary hover:bg-primary/10">
-                <Plus className="h-3 w-3 mr-1" />
-                Create Collection
-              </Button>
-            </div>
-            
-            <Card className="border-zinc-200 bg-white shadow-sm h-64 flex flex-col items-center justify-center text-center p-6">
-              <div className="h-12 w-12 rounded-full bg-zinc-100 flex items-center justify-center mb-4 text-zinc-400">
-                <FolderClosed className="h-6 w-6" />
+          <div className="xl:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-8 h-fit">
+            {/* Left panel: Collections list */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between select-none">
+                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Saved Collections</h3>
+                <Button variant="ghost" size="sm" className="h-7 text-xs font-bold text-primary hover:text-primary hover:bg-primary/10">
+                  <Plus className="h-3 w-3 mr-1" />
+                  Create Collection
+                </Button>
               </div>
-              <h4 className="text-sm font-bold text-zinc-800">No collections created yet</h4>
-              <p className="text-xs text-zinc-400 max-w-xs mt-1 leading-relaxed">
-                Collections hold qualified candidate profiles across sourcing targets. Create one to organize prospects.
-              </p>
-            </Card>
-          </div>
-
-          {/* Right panel: Activity Line Chart */}
-          <div className="space-y-3">
-            
-            <div className="flex items-center justify-between select-none">
-              <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Candidates Added</h3>
-              <div className="flex bg-zinc-200/60 p-0.5 rounded-lg text-xs font-bold text-zinc-500">
-                <button 
-                  onClick={() => setChartRange('daily')}
-                  className={`px-3 py-1 rounded-md transition-all ${
-                    chartRange === 'daily' 
-                      ? 'bg-white text-zinc-950 shadow-sm' 
-                      : 'hover:text-zinc-800'
-                  }`}
-                >
-                  Daily
-                </button>
-                <button 
-                  onClick={() => setChartRange('weekly')}
-                  className={`px-3 py-1 rounded-md transition-all ${
-                    chartRange === 'weekly' 
-                      ? 'bg-white text-zinc-950 shadow-sm' 
-                      : 'hover:text-zinc-800'
-                  }`}
-                >
-                  Weekly
-                </button>
-              </div>
-            </div>
-
-            {/* Line chart widget card */}
-            <Card className="border-zinc-200 bg-white shadow-sm h-64 p-6 flex flex-col justify-between">
               
-              {/* Header metrics info */}
-              <div className="flex items-start justify-between select-none">
-                <div className="space-y-1">
-                  <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">Total Profiles Parsed</span>
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-2xl font-extrabold text-zinc-900">
-                      {chartRange === 'daily' ? '148' : '1,980'}
-                    </span>
-                    <span className="text-xs font-bold text-primary flex items-center gap-0.5">
-                      <TrendingUp className="h-3.5 w-3.5" />
-                      +28%
-                    </span>
-                  </div>
+              <Card className="border-zinc-200 bg-white shadow-sm h-64 flex flex-col items-center justify-center text-center p-6">
+                <div className="h-12 w-12 rounded-full bg-zinc-100 flex items-center justify-center mb-4 text-zinc-400">
+                  <FolderClosed className="h-6 w-6" />
+                </div>
+                <h4 className="text-sm font-bold text-zinc-800">No collections created yet</h4>
+                <p className="text-xs text-zinc-400 max-w-xs mt-1 leading-relaxed">
+                  Collections hold qualified candidate profiles across sourcing targets. Create one to organize prospects.
+                </p>
+              </Card>
+            </div>
+
+            {/* Right panel: Activity Line Chart */}
+            <div className="space-y-3">
+              
+              <div className="flex items-center justify-between select-none">
+                <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-wider">Candidates Added</h3>
+                <div className="flex bg-zinc-200/60 p-0.5 rounded-lg text-xs font-bold text-zinc-500">
+                  <button 
+                    onClick={() => setChartRange('daily')}
+                    className={`px-3 py-1 rounded-md transition-all ${
+                      chartRange === 'daily' 
+                        ? 'bg-white text-zinc-950 shadow-sm' 
+                        : 'hover:text-zinc-800'
+                    }`}
+                  >
+                    Daily
+                  </button>
+                  <button 
+                    onClick={() => setChartRange('weekly')}
+                    className={`px-3 py-1 rounded-md transition-all ${
+                      chartRange === 'weekly' 
+                        ? 'bg-white text-zinc-950 shadow-sm' 
+                        : 'hover:text-zinc-800'
+                    }`}
+                  >
+                    Weekly
+                  </button>
                 </div>
               </div>
 
-              {/* Custom SVG Line Chart */}
-              <div className="flex-1 w-full mt-4 relative">
-                <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-full overflow-visible">
-                  
-                  {/* Grid Lines */}
-                  <line x1="0" y1="0" x2={chartWidth} y2="0" stroke="var(--border)" strokeWidth="1" strokeDasharray="3" />
-                  <line x1="0" y1={chartHeight / 2} x2={chartWidth} y2={chartHeight / 2} stroke="var(--border)" strokeWidth="1" strokeDasharray="3" />
-                  <line x1="0" y1={chartHeight} x2={chartWidth} y2={chartHeight} stroke="var(--border)" strokeWidth="1.5" />
+              {/* Line chart widget card */}
+              <Card className="border-zinc-200 bg-white shadow-sm h-64 p-6 flex flex-col justify-between">
+                
+                {/* Header metrics info */}
+                <div className="flex items-start justify-between select-none">
+                  <div className="space-y-1">
+                    <span className="text-xs font-bold text-zinc-400 uppercase tracking-wider block">Total Profiles Parsed</span>
+                    <div className="flex items-baseline gap-2">
+                      <span className="text-2xl font-extrabold text-zinc-900">
+                        {chartRange === 'daily' ? '148' : '1,980'}
+                      </span>
+                      <span className="text-xs font-bold text-primary flex items-center gap-0.5">
+                        <TrendingUp className="h-3.5 w-3.5" />
+                        +28%
+                      </span>
+                    </div>
+                  </div>
+                </div>
 
-                  {/* Gradient Area Fill under line */}
-                  <defs>
-                    <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.15" />
-                      <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-                  <polygon points={areaPath} fill="url(#chartGradient)" />
+                {/* Custom SVG Line Chart */}
+                <div className="flex-1 w-full mt-4 relative">
+                  <svg viewBox={`0 0 ${chartWidth} ${chartHeight}`} className="w-full h-full overflow-visible">
+                    
+                    {/* Grid Lines */}
+                    <line x1="0" y1="0" x2={chartWidth} y2="0" stroke="var(--border)" strokeWidth="1" strokeDasharray="3" />
+                    <line x1="0" y1={chartHeight / 2} x2={chartWidth} y2={chartHeight / 2} stroke="var(--border)" strokeWidth="1" strokeDasharray="3" />
+                    <line x1="0" y1={chartHeight} x2={chartWidth} y2={chartHeight} stroke="var(--border)" strokeWidth="1.5" />
 
-                  {/* SVG Stroke Line */}
-                  <polyline
-                    fill="none"
-                    stroke="var(--primary)"
-                    strokeWidth="2.5"
-                    points={pointsString}
-                  />
+                    {/* Gradient Area Fill under line */}
+                    <defs>
+                      <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor="var(--primary)" stopOpacity="0.15" />
+                        <stop offset="100%" stopColor="var(--primary)" stopOpacity="0" />
+                      </linearGradient>
+                    </defs>
+                    <polygon points={areaPath} fill="url(#chartGradient)" />
 
-                  {/* SVG dots on points */}
-                  {activePoints.map((val, idx) => {
-                    const x = (idx / (activePoints.length - 1)) * chartWidth;
-                    const y = chartHeight - (val / maxVal) * chartHeight;
-                    return (
-                      <g key={idx} className="cursor-pointer group/dot">
-                        <circle
-                          cx={x}
-                          cy={y}
-                          r="7"
-                          fill="var(--primary)"
-                          fillOpacity="0"
-                          style={{ transition: 'fill-opacity 150ms ease-out' }}
-                          className="group-hover/dot:fill-opacity-[0.12]"
-                        />
-                        <circle
-                          cx={x}
-                          cy={y}
-                          r="3.5"
-                          fill="white"
-                          stroke="var(--primary)"
-                          strokeWidth="2.5"
-                        />
-                        <title>{`Added: ${val}`}</title>
-                      </g>
-                    );
-                  })}
+                    {/* SVG Stroke Line */}
+                    <polyline
+                      fill="none"
+                      stroke="var(--primary)"
+                      strokeWidth="2.5"
+                      points={pointsString}
+                    />
 
-                </svg>
-              </div>
+                    {/* SVG dots on points */}
+                    {activePoints.map((val, idx) => {
+                      const x = (idx / (activePoints.length - 1)) * chartWidth;
+                      const y = chartHeight - (val / maxVal) * chartHeight;
+                      return (
+                        <g key={idx} className="cursor-pointer group/dot">
+                          <circle
+                            cx={x}
+                            cy={y}
+                            r="7"
+                            fill="var(--primary)"
+                            fillOpacity="0"
+                            style={{ transition: 'fill-opacity 150ms ease-out' }}
+                            className="group-hover/dot:fill-opacity-[0.12]"
+                          />
+                          <circle
+                            cx={x}
+                            cy={y}
+                            r="3.5"
+                            fill="white"
+                            stroke="var(--primary)"
+                            strokeWidth="2.5"
+                          />
+                          <title>{`Added: ${val}`}</title>
+                        </g>
+                      );
+                    })}
 
-              {/* Chart Footer Dates label */}
-              <div className="flex justify-between items-center text-[10px] text-zinc-400 font-bold uppercase select-none mt-2">
-                {chartRange === 'daily' ? (
-                  <>
-                    <span>Mon</span>
-                    <span>Tue</span>
-                    <span>Wed</span>
-                    <span>Thu</span>
-                    <span>Fri</span>
-                    <span>Sat</span>
-                    <span>Sun</span>
-                  </>
-                ) : (
-                  <>
-                    <span>Week 1</span>
-                    <span>Week 2</span>
-                    <span>Week 3</span>
-                    <span>Week 4</span>
-                    <span>Week 5</span>
-                    <span>Week 6</span>
-                    <span>Week 7</span>
-                  </>
-                )}
-              </div>
+                  </svg>
+                </div>
 
-            </Card>
+                {/* Chart Footer Dates label */}
+                <div className="flex justify-between items-center text-[10px] text-zinc-400 font-bold uppercase select-none mt-2">
+                  {chartRange === 'daily' ? (
+                    <>
+                      <span>Mon</span>
+                      <span>Tue</span>
+                      <span>Wed</span>
+                      <span>Thu</span>
+                      <span>Fri</span>
+                      <span>Sat</span>
+                      <span>Sun</span>
+                    </>
+                  ) : (
+                    <>
+                      <span>Week 1</span>
+                      <span>Week 2</span>
+                      <span>Week 3</span>
+                      <span>Week 4</span>
+                      <span>Week 5</span>
+                      <span>Week 6</span>
+                      <span>Week 7</span>
+                    </>
+                  )}
+                </div>
 
+              </Card>
+
+            </div>
+          </div>
+
+          {/* Right column: Workspace Real-Time Activity Feed */}
+          <div className="xl:col-span-1">
+            <ActivityFeedWidget />
           </div>
 
         </div>
