@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import { Button } from '@workspace/ui/components/button';
 import { Input } from '@workspace/ui/components/input';
-import { UserPlus, Link2, MoreHorizontal, Check, RefreshCw } from 'lucide-react';
+import { UserPlus, Link2, MoreHorizontal, Check, RefreshCw, Loader2 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
 
 interface Member {
   id: string;
@@ -17,32 +18,65 @@ interface Member {
 export default function MembersPage() {
   const [emailInput, setEmailInput] = useState('');
   const [copied, setCopied] = useState(false);
-  const [members, setMembers] = useState<Member[]>([
-    {
-      id: 'default-1',
-      name: 'Kael Belceus',
-      email: 'kbelceus776@gmail.com',
-      role: 'Admin',
-      connectionsSynced: 'No connections synced',
-      isViewer: false
-    }
-  ]);
+  const [inviteLoading, setInviteLoading] = useState(false);
+  const [inviteError, setInviteError] = useState('');
+  const [inviteSuccess, setInviteSuccess] = useState('');
+  const [members, setMembers] = useState<Member[]>([]);
 
-  const handleInvite = (e: React.FormEvent) => {
+  React.useEffect(() => {
+    supabase.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        setMembers([{
+          id: 'default-1',
+          name: user.email?.split('@')[0] || 'Admin',
+          email: user.email || '',
+          role: 'Admin',
+          connectionsSynced: 'No connections synced',
+          isViewer: false
+        }]);
+      }
+    });
+  }, []);
+
+  const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!emailInput.trim() || !emailInput.includes('@')) return;
 
-    const newMember: Member = {
-      id: `member-${Date.now()}`,
-      name: emailInput.split('@')[0] || '',
-      email: emailInput,
-      role: 'Member',
-      connectionsSynced: 'No connections synced',
-      isViewer: true
-    };
+    setInviteLoading(true);
+    setInviteError('');
+    setInviteSuccess('');
 
-    setMembers(prev => [...prev, newMember]);
-    setEmailInput('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await fetch('/api/team/invite', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(session?.access_token ? { 'Authorization': `Bearer ${session.access_token}` } : {})
+        },
+        body: JSON.stringify({ email: emailInput, role: 'member' })
+      });
+      const data = await res.json();
+
+      if (!res.ok) {
+        setInviteError(data.error || 'Échec de l\'invitation');
+      } else {
+        setInviteSuccess(`Invitation envoyée à ${emailInput}`);
+        setMembers(prev => [...prev, {
+          id: `member-${Date.now()}`,
+          name: emailInput.split('@')[0] || '',
+          email: emailInput,
+          role: 'Member',
+          connectionsSynced: 'No connections synced',
+          isViewer: true
+        }]);
+        setEmailInput('');
+      }
+    } catch {
+      setInviteError('Erreur réseau. Réessayez.');
+    } finally {
+      setInviteLoading(false);
+    }
   };
 
   const handleCopyLink = () => {
@@ -90,14 +124,16 @@ export default function MembersPage() {
                 type="email"
                 placeholder="Enter email address"
                 value={emailInput}
-                onChange={(e) => setEmailInput(e.target.value)}
+                onChange={(e) => { setEmailInput(e.target.value); setInviteError(''); setInviteSuccess(''); }}
                 className="h-10 text-xs border-zinc-200 bg-white rounded-lg focus-visible:ring-1 focus-visible:ring-primary placeholder-zinc-400 text-zinc-800"
               />
             </div>
             <Button
               type="submit"
-              className="h-10 px-6 bg-[#5FC890] hover:bg-[#4eb67e] text-white text-xs font-bold rounded-lg shrink-0 transition-colors"
+              disabled={inviteLoading}
+              className="h-10 px-6 bg-[#5FC890] hover:bg-[#4eb67e] text-white text-xs font-bold rounded-lg shrink-0 transition-colors flex items-center gap-1.5"
             >
+              {inviteLoading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               Invite
             </Button>
             <Button
@@ -118,6 +154,8 @@ export default function MembersPage() {
               )}
             </Button>
           </form>
+          {inviteError && <p className="text-xs text-red-600 font-medium">{inviteError}</p>}
+          {inviteSuccess && <p className="text-xs text-emerald-600 font-medium">{inviteSuccess}</p>}
         </div>
 
         {/* Section Members List */}

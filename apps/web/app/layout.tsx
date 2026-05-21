@@ -23,6 +23,12 @@ export default function RootLayout({
       suppressHydrationWarning
       className={cn("antialiased", fontMono.variable, "font-sans", inter.variable)}
     >
+      <head>
+        <link rel="manifest" href="/manifest.json" />
+        <meta name="theme-color" content="#10b981" />
+        <title>Vectra OS</title>
+        <meta name="description" content="AI-Powered SaaS B2B Prospecting & Automated Outreach" />
+      </head>
       <body>
         <PostHogInit />
         <ThemeProvider>{children}</ThemeProvider>

@@ -198,3 +198,21 @@
   background-size: 8px 8px;
   background-position: 0 0;
 }
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(-6px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes slide-left {
+  from { opacity: 0; transform: translateX(100%); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@utility animate-slide-in {
+  animation: slide-in var(--duration-base, 220ms) var(--ease-out-quint, cubic-bezier(0.22,1,0.36,1)) both;
+}
+
+@utility animate-slide-left {
+  animation: slide-left var(--duration-slow, 350ms) var(--ease-out-quint, cubic-bezier(0.22,1,0.36,1)) both;
+}

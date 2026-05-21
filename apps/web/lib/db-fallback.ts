@@ -586,3 +586,177 @@ export async function saveFollowUp(entry: FollowUpEntry): Promise<FollowUpEntry>
   }
 }
 
+// --- PHASE 3 ACTIVITY LOGS & COMMENTS ---
+
+export interface ActivityLog {
+  id: string;
+  user_id?: string;
+  actor_type: 'user' | 'agent';
+  actor_name: string;
+  activity_type: string;
+  description: string;
+  metadata?: any;
+  created_at: string;
+}
+
+export interface LeadComment {
+  id: string;
+  lead_id: string;
+  user_id?: string;
+  user_name: string;
+  content: string;
+  created_at: string;
+}
+
+const DEFAULT_ACTIVITY_LOGS: ActivityLog[] = [
+  {
+    id: 'act-1',
+    actor_type: 'agent',
+    actor_name: 'Hermes Sourcing Agent',
+    activity_type: 'lead_qualified',
+    description: 'Lead qualifié : Marc-André Leclerc (LeadFlow AI) - score 95%',
+    created_at: new Date(Date.now() - 3600 * 1000).toISOString() // 1 hour ago
+  },
+  {
+    id: 'act-2',
+    actor_type: 'agent',
+    actor_name: 'Hermes Sourcing Agent',
+    activity_type: 'email_drafted',
+    description: 'Brouillon d\'e-mail généré pour Sarah Jenkins (TechRecruit)',
+    created_at: new Date(Date.now() - 7200 * 1000).toISOString() // 2 hours ago
+  }
+];
+
+const DEFAULT_LEAD_COMMENTS: Record<string, LeadComment[]> = {
+  'lead-seed-1': [
+    {
+      id: 'com-1',
+      lead_id: 'lead-seed-1',
+      user_name: 'Kael',
+      content: 'Ce lead a l\'air excellent. Marc-André est très actif sur LinkedIn.',
+      created_at: new Date(Date.now() - 4 * 3600 * 1000).toISOString()
+    }
+  ]
+};
+
+export async function getActivityLogs(): Promise<ActivityLog[]> {
+  try {
+    const { data, error } = await supabase
+      .from('activity_logs')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(50);
+    if (error) throw error;
+    return (data || []) as ActivityLog[];
+  } catch (err) {
+    const logs = localDB.getItem('vectra_activity_logs', DEFAULT_ACTIVITY_LOGS);
+    return logs.sort((a: any, b: any) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+  }
+}
+
+export async function createActivityLog(
+  actor_type: 'user' | 'agent',
+  actor_name: string,
+  activity_type: string,
+  description: string,
+  metadata: any = {}
+): Promise<ActivityLog> {
+  const newLog: ActivityLog = {
+    id: `act-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+    actor_type,
+    actor_name,
+    activity_type,
+    description,
+    metadata,
+    created_at: new Date().toISOString()
+  };
+
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { data, error } = await supabase
+      .from('activity_logs')
+      .insert({
+        user_id: user?.id,
+        actor_type,
+        actor_name,
+        activity_type,
+        description,
+        metadata
+      })
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data as ActivityLog;
+  } catch (err) {
+    const logs = await getActivityLogs();
+    const updated = [newLog, ...logs];
+    localDB.setItem('vectra_activity_logs', updated);
+    return newLog;
+  }
+}
+
+export async function getLeadComments(leadId: string): Promise<LeadComment[]> {
+  try {
+    const { data, error } = await supabase
+      .from('lead_comments')
+      .select('*')
+      .eq('lead_id', leadId)
+      .order('created_at', { ascending: true });
+    if (error) throw error;
+    return (data || []) as LeadComment[];
+  } catch (err) {
+    const allComments = localDB.getItem('vectra_lead_comments', DEFAULT_LEAD_COMMENTS);
+    return allComments[leadId] || [];
+  }
+}
+
+export async function createLeadComment(leadId: string, content: string): Promise<LeadComment> {
+  try {
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    // Resolve user_name from profile
+    let userName = 'User';
+    if (user) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('first_name, last_name')
+        .eq('id', user.id)
+        .single();
+      if (profile) {
+        userName = `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || 'User';
+      }
+    }
+
+    const newCommentPayload = {
+      lead_id: leadId,
+      user_id: user?.id,
+      user_name: userName,
+      content
+    };
+
+    const { data, error } = await supabase
+      .from('lead_comments')
+      .insert(newCommentPayload)
+      .select('*')
+      .single();
+    if (error) throw error;
+    return data as LeadComment;
+  } catch (err) {
+    // FALLBACK
+    const allComments = localDB.getItem('vectra_lead_comments', DEFAULT_LEAD_COMMENTS);
+    if (!allComments[leadId]) {
+      allComments[leadId] = [];
+    }
+    const newComment: LeadComment = {
+      id: `com-${Date.now()}`,
+      lead_id: leadId,
+      user_name: 'User',
+      content,
+      created_at: new Date().toISOString()
+    };
+    allComments[leadId].push(newComment);
+    localDB.setItem('vectra_lead_comments', allComments);
+    return newComment;
+  }
+}
+

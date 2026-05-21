@@ -159,6 +159,36 @@ export async function POST(request: Request) {
         console.error('[Nylas Webhook] Error inserting inbox message:', msgError);
       } else {
         console.log(`[Nylas Webhook] Successfully persisted message and pre-generated draft reply in Supabase.`);
+        
+        // Fetch user_id from the campaign to target the correct notification recipient
+        try {
+          const { data: leadData } = await supabaseAdmin
+            .from('leads')
+            .select('campaign_id')
+            .eq('id', leadId)
+            .single();
+            
+          if (leadData?.campaign_id) {
+            const { data: campaignData } = await supabaseAdmin
+              .from('campaigns')
+              .select('user_id')
+              .eq('id', leadData.campaign_id)
+              .single();
+              
+            if (campaignData?.user_id) {
+              await supabaseAdmin.from('notifications').insert({
+                user_id: campaignData.user_id,
+                type: 'inbox_reply',
+                title: `Réponse de ${senderName}`,
+                body: emailBodyText.slice(0, 100) + (emailBodyText.length > 100 ? '...' : ''),
+                metadata: { leadId, senderEmail, senderName, conversationId }
+              });
+              console.log(`[Nylas Webhook] Dispatched inbox_reply notification for user ${campaignData.user_id}`);
+            }
+          }
+        } catch (notifErr) {
+          console.error('[Nylas Webhook] Failed to dispatch inbox_reply notification:', notifErr);
+        }
       }
     }
 

@@ -178,6 +178,21 @@ export async function POST(req: Request) {
       leads = matched;
     }
 
+    if (userId) {
+      try {
+        await supabaseAdmin.from('notifications').insert({
+          user_id: userId,
+          type: 'lead_added',
+          title: `Recherche complétée : ${query || 'Prospects'}`,
+          body: `L'agent de sourcing a découvert ${leads.length} profils qualifiés.`,
+          metadata: { query, count: leads.length }
+        });
+        console.log(`[SCRAPER] Dispatched lead_added notification for user ${userId}`);
+      } catch (notifErr) {
+        console.error('[SCRAPER] Failed to dispatch lead_added notification:', notifErr);
+      }
+    }
+
     return NextResponse.json({
       success: true,
       provider: scrapegraphApiKey ? 'scrapegraph_ai_cloud' : 'simulated_scraper_fallback',

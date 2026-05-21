@@ -18,6 +18,7 @@ CREATE POLICY "Users can manage workspaces they are part of"
 -- Create public.profiles table
 CREATE TABLE public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email TEXT,
     first_name TEXT,
     last_name TEXT,
     workspace_id UUID REFERENCES public.workspaces(id) ON DELETE SET NULL,
@@ -32,6 +33,7 @@ CREATE TABLE public.profiles (
     plan TEXT DEFAULT 'alpha_free',
     stripe_customer_id TEXT,
     stripe_subscription_id TEXT,
+    agent_config JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -64,8 +66,8 @@ CREATE POLICY "Users can view and edit their own profiles"
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
-    INSERT INTO public.profiles (id)
-    VALUES (new.id);
+    INSERT INTO public.profiles (id, email)
+    VALUES (new.id, new.email);
     RETURN new;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
@@ -292,3 +294,78 @@ ALTER TABLE public.profiles
 -- Add email column to profiles (mirrors auth.users.email for convenience)
 ALTER TABLE public.profiles
     ADD COLUMN IF NOT EXISTS email TEXT;
+
+-- Brevo config on workspace-level (shared, stored per user who is the workspace admin)
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS brevo_api_key TEXT,
+  ADD COLUMN IF NOT EXISTS brevo_sender_email TEXT,
+  ADD COLUMN IF NOT EXISTS brevo_sender_name TEXT;
+
+-- API keys table (secure: stores hash, not raw key)
+CREATE TABLE IF NOT EXISTS public.api_keys (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  key_hash TEXT NOT NULL UNIQUE,
+  key_prefix TEXT NOT NULL,  -- e.g. "vt_live_92hf"
+  name TEXT NOT NULL DEFAULT 'Default Key',
+  last_used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.api_keys ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage their own api_keys"
+  ON public.api_keys FOR ALL USING (auth.uid() = user_id);
+
+-- Notifications table
+CREATE TABLE IF NOT EXISTS public.notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('inbox_reply', 'agent_cycle', 'brevo_sent', 'lead_added')),
+  title TEXT NOT NULL,
+  body TEXT,
+  read BOOLEAN DEFAULT false,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.notifications ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage their own notifications"
+  ON public.notifications FOR ALL USING (auth.uid() = user_id);
+
+-- Phase 3 updates: Add autopilot config to campaigns
+ALTER TABLE public.campaigns
+  ADD COLUMN IF NOT EXISTS autopilot BOOLEAN NOT NULL DEFAULT false;
+
+-- Create activity_logs table for autonomous agent activity tracker
+CREATE TABLE IF NOT EXISTS public.activity_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  actor_type TEXT NOT NULL CHECK (actor_type IN ('user', 'agent')),
+  actor_name TEXT NOT NULL,
+  activity_type TEXT NOT NULL,
+  description TEXT NOT NULL,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.activity_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage their own activity_logs"
+  ON public.activity_logs FOR ALL USING (auth.uid() = user_id);
+
+-- Create lead_comments table for team discussion
+CREATE TABLE IF NOT EXISTS public.lead_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lead_id UUID NOT NULL REFERENCES public.leads(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_name TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+ALTER TABLE public.lead_comments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "Users manage comments of their own leads"
+  ON public.lead_comments FOR ALL USING (
+    auth.uid() = user_id OR EXISTS (
+      SELECT 1 FROM public.leads
+      JOIN public.campaigns ON public.campaigns.id = public.leads.campaign_id
+      WHERE public.leads.id = lead_comments.lead_id
+        AND public.campaigns.user_id = auth.uid()
+    )
+  );
+
