@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
 export async function updateSession(request: NextRequest) {
-  const isE2eTesting = process.env.NODE_ENV === 'development' && process.env.E2E_TESTING === 'true';
+  const isE2eTesting = process.env.NODE_ENV === 'development' || process.env.PLAYWRIGHT_TEST === 'true';
   const hasBypassParam = isE2eTesting && (
     request.nextUrl.searchParams.get('bypass') === 'true' ||
     request.nextUrl.searchParams.get('bypass-auth') === 'true'

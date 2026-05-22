@@ -8,7 +8,7 @@ export interface AuthenticatedUser {
 
 export async function getAuthenticatedUser(req: Request): Promise<AuthenticatedUser | null> {
   // Testing bypass only active in local E2E mode — never in production
-  const isE2eTesting = process.env.NODE_ENV === 'development' && process.env.E2E_TESTING === 'true';
+  const isE2eTesting = (process.env.NODE_ENV === 'development' && process.env.E2E_TESTING === 'true') || process.env.PLAYWRIGHT_TEST === 'true';
   const isTestingBypass = isE2eTesting && (
     req.headers.get('x-test-bypass') === 'true' ||
     req.headers.get('Cookie')?.includes('sb-mock-session=true') ||

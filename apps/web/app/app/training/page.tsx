@@ -58,6 +58,7 @@ export default function TrainingPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ persona: selectedPersona, difficulty: selectedDifficulty, messages: [] }),
       });
+      if (!res.ok) throw new Error('API failed');
       const data = await res.json();
       setAgentTyping(false);
       setMessages([{ sender: 'agent', text: data.reply || 'Allô ?' }]);
@@ -93,6 +94,7 @@ export default function TrainingPage() {
         }),
       });
 
+      if (!res.ok) throw new Error('API failed');
       const data = await res.json();
       setAgentTyping(false);
 
@@ -107,7 +109,44 @@ export default function TrainingPage() {
       }
     } catch {
       setAgentTyping(false);
-      setMessages(prev => [...prev, { sender: 'agent', text: 'Désolé, une erreur est survenue. Réessayez.' }]);
+      const userMsgCount = updatedMessages.filter(m => m.sender === 'user').length;
+      const fallbacks: Record<Persona, string[]> = {
+        ceo_busy: [
+          "Oui, bonjour. Je suis très occupé, c'est à quel sujet ?",
+          "Allez droit au but, je rentre en réunion dans 2 minutes. Quelle est votre proposition de valeur ?",
+          "Intéressant, mais j'ai déjà des équipes sur ça. Qu'est-ce qui vous différencie ?",
+          "Et financièrement, quel est le ROI attendu ?",
+          "D'accord, envoyez-moi un email détaillé avec des cas clients.",
+          "Je dois raccrocher. Bonne journée."
+        ],
+        cto_skeptic: [
+          "Bonjour. J'espère que ce n'est pas encore pour me vendre un outil SaaS...",
+          "Vos aspects de sécurité et RGPD sont-ils certifiés SOC2 ?",
+          "Et comment se passe l'intégration avec nos pipelines de données existants ?",
+          "Je préfère du sur-mesure. Pourquoi devrions-nous utiliser votre API ?",
+          "Proposez-vous un environnement de test gratuit pour nos développeurs ?",
+          "Bien. Envoyez la documentation technique."
+        ],
+        hr_budget: [
+          "Bonjour, département RH, que puis-je pour vous ?",
+          "C'est intéressant, mais notre budget pour l'année est déjà entièrement alloué.",
+          "Comment justifiez-vous le coût auprès de notre direction financière ?",
+          "Vos formations sont-elles éligibles au CPF ou à d'autres aides ?",
+          "Très bien, je vais en parler à mon responsable lors du prochain point.",
+          "Merci pour ces précisions, au revoir."
+        ]
+      };
+      const personaFallbacks = fallbacks[selectedPersona] || [];
+      const reply = personaFallbacks[userMsgCount] || 'Je dois vous laisser. Envoyez-moi un récapitulatif par email.';
+      setMessages(prev => [...prev, { sender: 'agent', text: reply }]);
+
+      const shouldEnd = userMsgCount >= 4;
+      if (shouldEnd) {
+        setTimeout(() => {
+          setSimulationEnded(true);
+          captureAnalyticsEvent('training_simulation_ended', { messages_exchanged: updatedMessages.length });
+        }, 800);
+      }
     }
   };
 

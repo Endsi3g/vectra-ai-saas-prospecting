@@ -15,6 +15,10 @@ const DIFFICULTY_MODIFIERS: Record<string, string> = {
 
 export async function POST(req: Request) {
   try {
+    if (!process.env.OPENAI_API_KEY && !process.env.OPENROUTER_API_KEY) {
+      return NextResponse.json({ error: 'API keys missing' }, { status: 500 });
+    }
+
     const { persona, difficulty, messages } = await req.json();
 
     if (!persona || !difficulty || !messages) {

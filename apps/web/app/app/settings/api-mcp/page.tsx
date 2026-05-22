@@ -214,10 +214,11 @@ export default function ApiMcpPage() {
                   </div>
                   <button
                     onClick={() => handleRevokeKey(k.id)}
-                    className="p-2 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all"
+                    className="p-2 px-3 text-zinc-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-all flex items-center gap-1.5 text-xs font-bold"
                     title="Révoquer la clé"
                   >
                     <Trash2 className="h-4 w-4" />
+                    <span>Révoquer</span>
                   </button>
                 </div>
               ))
