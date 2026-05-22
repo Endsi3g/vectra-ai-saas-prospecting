@@ -5,15 +5,19 @@ import { apiError, apiSuccess, apiUnauthorized, apiBadRequest } from '@/lib/api-
 
 export const runtime = 'nodejs';
 
+type Ctx = { params: Promise<{ id: string }> };
+
 // POST /api/sequences/[id]/steps — add a single step
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: Ctx) {
   const user = await getAuthenticatedUser(req as unknown as Request);
   if (!user) return apiUnauthorized();
+
+  const { id } = await params;
 
   const { data: seq } = await supabaseAdmin
     .from('sequences')
     .select('id')
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', user.id)
     .single();
   if (!seq) return apiError('Séquence introuvable.', 404);
@@ -25,7 +29,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const { data: step, error } = await supabaseAdmin
     .from('sequence_steps')
     .insert({
-      sequence_id: params.id,
+      sequence_id: id,
       position: position ?? 0,
       delay_days,
       subject_a,

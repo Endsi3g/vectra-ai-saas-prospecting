@@ -6,14 +6,16 @@ import { apiError, apiUnauthorized } from '@/lib/api-response';
 export const runtime = 'nodejs';
 
 // GET /api/sequences/[id]/export — CSV export of all sends
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await getAuthenticatedUser(req as unknown as Request);
   if (!user) return apiUnauthorized();
+
+  const { id } = await params;
 
   const { data: seq } = await supabaseAdmin
     .from('sequences')
     .select('id, name')
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', user.id)
     .single();
   if (!seq) return apiError('Séquence introuvable.', 404);
@@ -21,7 +23,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const { data: stepIds } = await supabaseAdmin
     .from('sequence_steps')
     .select('id, position')
-    .eq('sequence_id', params.id);
+    .eq('sequence_id', id);
 
   const ids = (stepIds ?? []).map((s: { id: string }) => s.id);
 

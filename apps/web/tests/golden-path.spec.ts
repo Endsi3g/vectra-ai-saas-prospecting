@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { signIn, TEST_EMAIL, TEST_PASSWORD } from './helpers/auth';
+import { signIn, signUp, completeOnboarding, TEST_EMAIL, TEST_PASSWORD } from './helpers/auth';
 
 // Golden path: the critical user journey from landing to approved message.
 // Tests run sequentially (workers: 1) and share browser state via storageState.
@@ -12,9 +12,9 @@ test.describe('Golden Path — Vectra', () => {
     const video = page.locator('video');
     await expect(video).toBeAttached();
     // Navbar brand
-    await expect(page.getByText('VECTRA')).toBeVisible();
+    await expect(page.getByText('VECTRA').first()).toBeVisible();
     // Primary CTA
-    await expect(page.getByRole('link', { name: /commencer gratuitement/i })).toBeVisible();
+    await expect(page.getByRole('link', { name: /commencer gratuitement/i }).first()).toBeVisible();
   });
 
   test('2. Sign-in page is reachable from CTA', async ({ page }) => {
@@ -24,11 +24,12 @@ test.describe('Golden Path — Vectra', () => {
   });
 
   test('3. Sign-in with valid credentials redirects to app', async ({ page }) => {
-    await signIn(page);
-    // Should end up in /app or /onboarding after sign-in
-    await page.waitForURL(/\/(app|onboarding)/, { timeout: 10_000 });
+    // Register a new user dynamically
+    await signUp(page);
+    // Complete onboarding to mark onboarding_completed as true in DB and redirect to /app
+    await completeOnboarding(page);
     const url = page.url();
-    expect(url).toMatch(/\/(app|onboarding)/);
+    expect(url).toMatch(/\/app/);
   });
 
   test('4. Dashboard renders after auth', async ({ page }) => {
@@ -88,14 +89,14 @@ test.describe('Public pages', () => {
 
   test('404 page renders correctly', async ({ page }) => {
     await page.goto('/cette-page-nexiste-pas-du-tout');
-    await expect(page.getByText(/404|introuvable|not found/i)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/404|introuvable|not found/i).first()).toBeVisible({ timeout: 5_000 });
   });
 
   test('Pricing section visible on landing', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('link', { name: /tarifs/i }).click();
+    await page.getByRole('link', { name: /tarifs/i }).first().click();
     // Scroll to pricing section
-    await expect(page.getByText(/Free|Solo|Agence/)).toBeVisible({ timeout: 5_000 });
+    await expect(page.getByText(/Free|Solo|Agence/).first()).toBeVisible({ timeout: 5_000 });
   });
 
 });

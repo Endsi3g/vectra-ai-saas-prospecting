@@ -1,8 +1,9 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Script from 'next/script';
 import { supabase } from '@/lib/supabase';
 import { Sparkles } from 'lucide-react';
 import { Button } from '@workspace/ui/components/button';
@@ -17,6 +18,31 @@ export default function SignUpPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRef = useRef<HTMLDivElement>(null);
+
+  const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
+
+  const handleTurnstileLoad = () => {
+    if (typeof window !== 'undefined' && (window as any).turnstile && turnstileRef.current) {
+      try {
+        (window as any).turnstile.render(turnstileRef.current, {
+          sitekey: siteKey,
+          callback: (token: string) => {
+            setTurnstileToken(token);
+          },
+        });
+      } catch (err) {
+        console.error('Turnstile render error:', err);
+      }
+    }
+  };
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).turnstile && turnstileRef.current) {
+      handleTurnstileLoad();
+    }
+  }, []);
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -33,20 +59,45 @@ export default function SignUpPage() {
       return;
     }
 
+    // Require CAPTCHA token only in non-bypass / non-development environment if siteKey looks valid
+    const isE2eTesting = process.env.NODE_ENV === 'development' || process.env.PLAYWRIGHT_TEST === 'true';
+    if (!turnstileToken && !isE2eTesting && siteKey !== '1x00000000000000000000AA') {
+      setMessage({ type: 'error', text: 'Veuillez valider le CAPTCHA.' });
+      return;
+    }
+
     setLoading(true);
     setMessage(null);
 
     try {
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password,
-        options: {
-          data: { full_name: email.split('@')[0] },
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+      const signUpRes = await fetch('/api/auth/sign-up', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password, token: turnstileToken }),
       });
 
-      if (error) throw error;
+      const signUpResult = await signUpRes.json();
+      if (!signUpRes.ok) {
+        throw new Error(signUpResult.error || "Une erreur est survenue lors de l'inscription.");
+      }
+
+      // Log the user in on the client side
+      const { data, error: signInError } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (signInError) {
+        // If email confirmation is required:
+        if (signInError.message.includes('Email not confirmed')) {
+          setMessage({
+            type: 'success',
+            text: 'Inscription réussie ! Veuillez vérifier vos e-mails pour confirmer votre compte.',
+          });
+          return;
+        }
+        throw signInError;
+      }
 
       if (data?.user) {
         setMessage({ type: 'success', text: 'Inscription réussie ! Redirection en cours...' });
@@ -130,6 +181,11 @@ export default function SignUpPage() {
           />
         </div>
 
+        {/* Turnstile Captcha Widget */}
+        <div className="flex justify-center py-2">
+          <div ref={turnstileRef} id="turnstile-widget" />
+        </div>
+
         {message && (
           <div className={`rounded-lg px-4 py-3 text-xs font-medium ${
             message.type === 'success'
@@ -176,6 +232,13 @@ export default function SignUpPage() {
           Accéder à la démo (sans connexion)
         </Link>
       </div>
+
+      <Script
+        src="https://challenges.cloudflare.com/turnstile/v0/api.js"
+        onLoad={handleTurnstileLoad}
+        strategy="lazyOnload"
+      />
     </AuthShell>
   );
 }
+

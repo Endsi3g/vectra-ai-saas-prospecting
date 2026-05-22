@@ -1,12 +1,12 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { Suspense, useEffect, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { Phone, X, ChevronDown, ChevronUp } from 'lucide-react';
 import { supabase } from '@/lib/supabase';
 import type { Lead } from '@workspace/core/types';
 
-export default function OverlayPage() {
+function OverlayContent() {
   const searchParams = useSearchParams();
   const leadId = searchParams.get('leadId');
   const [lead, setLead] = useState<Lead | null>(null);
@@ -92,11 +92,16 @@ export default function OverlayPage() {
   );
 }
 
-declare global {
-  interface Window {
-    electron?: {
-      closeOverlay?: () => void;
-      [key: string]: unknown;
-    };
-  }
+export default function OverlayPage() {
+  return (
+    <Suspense fallback={
+      <div className="w-full h-full bg-zinc-900/90 rounded-xl flex items-center justify-center">
+        <div className="h-4 w-4 rounded-full bg-zinc-600 animate-pulse" />
+      </div>
+    }>
+      <OverlayContent />
+    </Suspense>
+  );
 }
+
+

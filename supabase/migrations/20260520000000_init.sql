@@ -287,10 +287,22 @@ CREATE POLICY "Users can manage follow_ups of their own leads"
     );
 
 
--- Add agent_config column to profiles for storing agent preferences
+-- Ensure all profile columns exist (in case the profiles table already existed from a template/quickstart)
 ALTER TABLE public.profiles
+    ADD COLUMN IF NOT EXISTS email TEXT,
+    ADD COLUMN IF NOT EXISTS first_name TEXT,
+    ADD COLUMN IF NOT EXISTS last_name TEXT,
+    ADD COLUMN IF NOT EXISTS workspace_id UUID REFERENCES public.workspaces(id) ON DELETE SET NULL,
+    ADD COLUMN IF NOT EXISTS business_type TEXT,
+    ADD COLUMN IF NOT EXISTS preferred_languages TEXT[] DEFAULT '{}',
+    ADD COLUMN IF NOT EXISTS tone TEXT CHECK (tone IN ('friendly', 'professional', 'formal')),
+    ADD COLUMN IF NOT EXISTS onboarding_completed BOOLEAN DEFAULT false,
+    ADD COLUMN IF NOT EXISTS tour_completed BOOLEAN DEFAULT false,
+    ADD COLUMN IF NOT EXISTS google_connected BOOLEAN DEFAULT false,
+    ADD COLUMN IF NOT EXISTS credits_count INTEGER DEFAULT 2000,
+    ADD COLUMN IF NOT EXISTS credits_limit INTEGER DEFAULT 2000,
+    ADD COLUMN IF NOT EXISTS plan TEXT DEFAULT 'alpha_free',
+    ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT,
+    ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT,
     ADD COLUMN IF NOT EXISTS agent_config JSONB DEFAULT '{}'::jsonb;
 
--- Add email column to profiles (mirrors auth.users.email for convenience)
-ALTER TABLE public.profiles
-    ADD COLUMN IF NOT EXISTS email TEXT;

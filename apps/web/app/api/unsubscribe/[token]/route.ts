@@ -4,18 +4,22 @@ import { apiError } from '@/lib/api-response';
 
 export const runtime = 'nodejs';
 
+type Ctx = { params: Promise<{ token: string }> };
+
 // GET /api/unsubscribe/[token] — public endpoint, no auth needed
-export async function GET(_req: NextRequest, { params }: { params: { token: string } }) {
+export async function GET(_req: NextRequest, { params }: Ctx) {
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     { auth: { persistSession: false } }
   );
 
+  const { token } = await params;
+
   const { data: tokenRow } = await supabase
     .from('unsubscribe_tokens')
     .select('id, enrollment_id, lead_id, used_at')
-    .eq('token', params.token)
+    .eq('token', token)
     .single();
 
   if (!tokenRow) {

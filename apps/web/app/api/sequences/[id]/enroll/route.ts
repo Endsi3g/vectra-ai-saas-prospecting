@@ -6,9 +6,11 @@ import { apiError, apiSuccess, apiUnauthorized, apiBadRequest } from '@/lib/api-
 export const runtime = 'nodejs';
 
 // POST /api/sequences/[id]/enroll — enroll lead(s) in a sequence
-export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
+export async function POST(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const user = await getAuthenticatedUser(req as unknown as Request);
   if (!user) return apiUnauthorized();
+
+  const { id } = await params;
 
   const body = await req.json();
   const { lead_ids } = body as { lead_ids: string[] };
@@ -18,7 +20,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const { data: seq } = await supabaseAdmin
     .from('sequences')
     .select('id, status, send_hour, sequence_steps(id)')
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', user.id)
     .single();
 
@@ -31,7 +33,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const { data: firstStep } = await supabaseAdmin
     .from('sequence_steps')
     .select('delay_days')
-    .eq('sequence_id', params.id)
+    .eq('sequence_id', id)
     .order('position')
     .limit(1)
     .single();
@@ -40,7 +42,7 @@ export async function POST(req: NextRequest, { params }: { params: { id: string 
   const nextSend = computeNextSendAt(delayDays, seq.send_hour as number);
 
   const enrollments = lead_ids.map((lead_id: string) => ({
-    sequence_id: params.id,
+    sequence_id: id,
     lead_id,
     current_step: 0,
     status: 'active' as const,

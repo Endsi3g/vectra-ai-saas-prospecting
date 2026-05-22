@@ -4,7 +4,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 // GET /api/v1/sequences/:id — sequence detail with steps
 export async function GET(req: NextRequest, { params }: Ctx) {
@@ -12,16 +12,18 @@ export async function GET(req: NextRequest, { params }: Ctx) {
   if ('error' in auth) return auth.error;
   const { ctx } = auth;
 
+  const { id } = await params;
+
   if (ctx.isSandbox) {
     return NextResponse.json({
-      data: { id: params.id, name: 'Mock Sequence', status: 'active', steps: [], sandbox: true },
+      data: { id, name: 'Mock Sequence', status: 'active', steps: [], sandbox: true },
     });
   }
 
   const { data, error } = await supabaseAdmin
     .from('sequences')
     .select('*, sequence_steps(*)')
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', ctx.userId)
     .single();
 
@@ -37,6 +39,8 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   const writeErr = writeRequired(ctx);
   if (writeErr) return writeErr;
 
+  const { id } = await params;
+
   if (ctx.isSandbox) {
     return NextResponse.json({ enrolled: 1, sandbox: true }, { status: 201 });
   }
@@ -48,7 +52,7 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   const { data: seq } = await supabaseAdmin
     .from('sequences')
     .select('id, status, send_hour, sequence_steps(id, delay_days)')
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', ctx.userId)
     .single();
 
@@ -66,9 +70,9 @@ export async function POST(req: NextRequest, { params }: Ctx) {
   const { data, error } = await supabaseAdmin
     .from('sequence_enrollments')
     .upsert(
-      lead_ids.map((id: string) => ({
-        sequence_id: params.id,
-        lead_id: id,
+      lead_ids.map((leadId: string) => ({
+        sequence_id: id,
+        lead_id: leadId,
         current_step: 0,
         status: 'active',
         next_send_at: nextSend.toISOString(),

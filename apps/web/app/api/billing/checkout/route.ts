@@ -39,8 +39,8 @@ export async function POST(req: Request) {
           },
         ],
         mode: 'subscription',
-        success_url: `${req.headers.get('origin') || 'http://localhost:3000'}/app?billing_status=success&plan=${plan}`,
-        cancel_url: `${req.headers.get('origin') || 'http://localhost:3000'}/app/settings`,
+        success_url: `${req.headers.get('origin') || 'http://localhost:3000'}/billing/success?plan=${plan}`,
+        cancel_url: `${req.headers.get('origin') || 'http://localhost:3000'}/billing/cancel?plan=${plan}`,
         metadata: {
           userId,
           plan,
@@ -52,7 +52,7 @@ export async function POST(req: Request) {
     } else {
       // Local development or Testing mock redirection fallback
       console.log('[STRIPE MOCK] Creating mock checkout session.');
-      const successUrl = `${req.headers.get('origin') || 'http://localhost:3000'}/app?billing_status=success&plan=${plan}`;
+      const successUrl = `${req.headers.get('origin') || 'http://localhost:3000'}/billing/success?plan=${plan}`;
       return NextResponse.json({ 
         url: successUrl,
         mocked: true

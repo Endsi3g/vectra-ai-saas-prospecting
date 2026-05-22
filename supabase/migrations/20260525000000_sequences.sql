@@ -99,13 +99,13 @@ CREATE POLICY "sequence_enrollments_owner" ON public.sequence_enrollments
 
 -- sends: via enrollment ownership
 CREATE POLICY "sequence_sends_owner" ON public.sequence_sends
-  USING (lead_id IN (SELECT id FROM public.leads WHERE user_id = auth.uid()));
+  USING (lead_id IN (SELECT l.id FROM public.leads l JOIN public.campaigns c ON l.campaign_id = c.id WHERE c.user_id = auth.uid()));
 
 -- unsubscribe tokens: anyone can read (needed for public unsubscribe page)
 CREATE POLICY "unsubscribe_tokens_public_read" ON public.unsubscribe_tokens
   FOR SELECT USING (true);
 CREATE POLICY "unsubscribe_tokens_owner_write" ON public.unsubscribe_tokens
-  USING (lead_id IN (SELECT id FROM public.leads WHERE user_id = auth.uid()));
+  USING (lead_id IN (SELECT l.id FROM public.leads l JOIN public.campaigns c ON l.campaign_id = c.id WHERE c.user_id = auth.uid()));
 
 -- ── indexes ───────────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS idx_sequence_enrollments_next_send ON public.sequence_enrollments(next_send_at)

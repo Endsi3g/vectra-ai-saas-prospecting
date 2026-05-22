@@ -98,6 +98,19 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   const [creditsCount, setCreditsCount] = useState<number>(2000);
   const [creditsLimit, setCreditsLimit] = useState<number>(2000);
   const [userPlan, setUserPlan] = useState<string>('alpha_free');
+  const [trialEndsAt, setTrialEndsAt] = useState<string | null>(null);
+
+  const getRemainingTrialDays = () => {
+    if (!trialEndsAt) return 0;
+    const now = new Date();
+    const end = new Date(trialEndsAt);
+    const diffTime = end.getTime() - now.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays > 0 ? diffDays : 0;
+  };
+
+  const remainingTrialDays = getRemainingTrialDays();
+  const isCreditsExhausted = creditsCount <= 0 && userPlan === 'alpha_free' && !pathname.startsWith('/app/settings');
 
   // Collections & Custom Interactive States
   const [collections, setCollections] = useState<any[]>([]);
@@ -187,7 +200,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           
           const { data: profile } = await supabase
             .from('profiles')
-            .select('tour_completed, credits_count, credits_limit, plan')
+            .select('tour_completed, credits_count, credits_limit, plan, trial_ends_at')
             .eq('id', user.id)
             .single();
 
@@ -203,6 +216,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             }
             if (profile.plan) {
               setUserPlan(profile.plan);
+            }
+            if (profile.trial_ends_at) {
+              setTrialEndsAt(profile.trial_ends_at);
             }
           } else {
             const localTourCompleted = localStorage.getItem('tour_completed') === 'true';
@@ -258,6 +274,12 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               }
               if (newProfile.credits_limit !== undefined && newProfile.credits_limit !== null) {
                 setCreditsLimit(newProfile.credits_limit);
+              }
+              if (newProfile.trial_ends_at !== undefined) {
+                setTrialEndsAt(newProfile.trial_ends_at);
+              }
+              if (newProfile.plan !== undefined) {
+                setUserPlan(newProfile.plan);
               }
             }
           }
@@ -389,7 +411,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
               <svg className="w-4 h-4 shrink-0 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
               </svg>
-              <span className="truncate max-w-[280px] xs:max-w-none">Your Starter trial is over. Upgrade to keep finding candidates, exporting collections, and sharing with your team.</span>
+              <span className="truncate max-w-[280px] xs:max-w-none">
+                {remainingTrialDays > 0 
+                  ? `Your trial expires in ${remainingTrialDays} days.` 
+                  : 'Your Starter trial is over. Upgrade to keep finding candidates, exporting collections, and sharing with your team.'}
+              </span>
               <Link href="/app/settings/plans" className="font-semibold underline hover:text-orange-700 ml-1 transition-colors whitespace-nowrap">Explore plans</Link>
             </div>
           </div>
@@ -496,7 +522,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
             <svg className="w-4 h-4 shrink-0 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
             </svg>
-            <span className="truncate max-w-[280px] xs:max-w-none">Your Starter trial is over. Upgrade to keep finding candidates, exporting collections, and sharing with your team.</span>
+            <span className="truncate max-w-[280px] xs:max-w-none">
+              {remainingTrialDays > 0 
+                ? `Your trial expires in ${remainingTrialDays} days.` 
+                : 'Your Starter trial is over. Upgrade to keep finding candidates, exporting collections, and sharing with your team.'}
+            </span>
             <Link href="/app/settings/plans" className="font-semibold underline hover:text-orange-700 ml-1 transition-colors whitespace-nowrap">Explore plans</Link>
           </div>
         </div>
@@ -648,20 +678,33 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
                 <div className="absolute top-0 left-0 w-full h-8 bg-gradient-to-b from-green-50/50 to-transparent pointer-events-none"></div>
 
                 <div className="relative z-10 space-y-2">
-                  <h4 className="font-medium text-zinc-900 text-xs leading-none">Your Starter trial is complete</h4>
-                  <p className="text-zinc-500 text-[11px] leading-tight">You've used all 7 days of your trial, upgrade to continue using all features.</p>
+                  <h4 className="font-medium text-zinc-900 text-xs leading-none">
+                    {remainingTrialDays > 0 
+                      ? `Trial ends in ${remainingTrialDays} days` 
+                      : 'Your Starter trial is complete'}
+                  </h4>
+                  <p className="text-zinc-500 text-[11px] leading-tight">
+                    {remainingTrialDays > 0 
+                      ? 'You are on a 14-day free trial. Upgrade to continue using premium features.' 
+                      : "You've used all 14 days of your trial, upgrade to continue using all features."}
+                  </p>
 
                   <div className="w-full bg-zinc-100 rounded-full h-1.5 overflow-hidden border border-zinc-200/50">
-                    <div className="bg-gradient-to-r from-orange-400 to-orange-500 h-1.5 rounded-full w-full"></div>
+                    <div 
+                      className="bg-gradient-to-r from-orange-400 to-orange-500 h-1.5 rounded-full transition-all duration-300"
+                      style={{ width: `${Math.max(0, Math.min(100, ((14 - remainingTrialDays) / 14) * 100))}%` }}
+                    ></div>
                   </div>
                 </div>
               </div>
             ) : (
               <div
                 className="flex justify-center h-8 w-8 items-center rounded-lg bg-orange-50 text-orange-700 border border-orange-200 text-[10px] font-extrabold mx-auto cursor-help mb-2"
-                title="Your Starter trial is complete. Upgrade to continue."
+                title={remainingTrialDays > 0 
+                  ? `Trial ends in ${remainingTrialDays} days` 
+                  : "Your Starter trial is complete. Upgrade to continue."}
               >
-                100%
+                {Math.max(0, Math.min(100, Math.round(((14 - remainingTrialDays) / 14) * 100)))}%
               </div>
             ))}
             {isCollapsed ? (
@@ -807,6 +850,48 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       )}
 
       {showTour && <TourGuide onClose={handleTourClose} />}
+
+      {/* Credits Exhausted Blocker Overlay */}
+      {isCreditsExhausted && (
+        <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-zinc-950/80 backdrop-blur-xl p-4 text-center select-none animate-in fade-in duration-500">
+          <div className="relative max-w-md w-full bg-zinc-900/60 border border-zinc-800 rounded-3xl p-8 shadow-2xl backdrop-blur-md space-y-6">
+            <div className="absolute -top-10 left-1/2 -translate-x-1/2 w-20 h-20 bg-emerald-500/20 border border-emerald-500/30 rounded-2xl flex items-center justify-center animate-bounce shadow-xl">
+              <Coins className="h-10 w-10 text-emerald-400" />
+            </div>
+            
+            <div className="pt-8 space-y-2">
+              <h2 className="text-2xl font-extrabold text-white tracking-tight">Crédits épuisés ! ⚡</h2>
+              <p className="text-sm text-zinc-400 leading-relaxed">
+                Vous avez utilisé l'intégralité de vos crédits gratuits pour ce mois. Passez au plan supérieur pour continuer à utiliser Vectra AI sans interruption.
+              </p>
+            </div>
+
+            <div className="bg-zinc-800/40 rounded-2xl p-4 border border-zinc-800/50 flex justify-between items-center text-left">
+              <div>
+                <p className="text-xs font-semibold text-zinc-500 uppercase tracking-wider">Votre plan actuel</p>
+                <p className="text-sm font-bold text-zinc-200">Alpha Free (0 crédit restant)</p>
+              </div>
+              <span className="bg-emerald-500/10 text-emerald-400 text-xs px-2.5 py-1 rounded-full font-bold border border-emerald-500/20">
+                Starter
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-2 pt-2">
+              <Link href="/app/settings/plans" className="w-full">
+                <Button className="w-full bg-emerald-500 hover:bg-emerald-600 text-zinc-950 font-bold h-12 rounded-xl shadow-lg shadow-emerald-500/20 transition-all transform hover:scale-[1.01]">
+                  Mettre à niveau mon compte
+                </Button>
+              </Link>
+              <button 
+                onClick={handleSignOut}
+                className="text-xs text-zinc-500 hover:text-zinc-300 font-semibold py-2 transition-colors"
+              >
+                Se déconnecter
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

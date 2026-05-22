@@ -5,12 +5,14 @@ import { apiError, apiSuccess, apiUnauthorized, apiNotFound } from '@/lib/api-re
 
 export const runtime = 'nodejs';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 // GET /api/sequences/[id]
 export async function GET(req: NextRequest, { params }: Ctx) {
   const user = await getAuthenticatedUser(req as unknown as Request);
   if (!user) return apiUnauthorized();
+
+  const { id } = await params;
 
   const { data, error } = await supabaseAdmin
     .from('sequences')
@@ -19,7 +21,7 @@ export async function GET(req: NextRequest, { params }: Ctx) {
       sequence_steps(*),
       sequence_enrollments(id, status, lead_id, current_step, next_send_at, enrolled_at, stop_reason)
     `)
-    .eq('id', params.id)
+    .eq('id', id)
     .or(`user_id.eq.${user.id},is_template.eq.true`)
     .single();
 
@@ -31,6 +33,8 @@ export async function GET(req: NextRequest, { params }: Ctx) {
 export async function PUT(req: NextRequest, { params }: Ctx) {
   const user = await getAuthenticatedUser(req as unknown as Request);
   if (!user) return apiUnauthorized();
+
+  const { id } = await params;
 
   const body = await req.json();
   const { name, description, status, send_hour, timezone, campaign_id, steps } = body;
@@ -46,18 +50,18 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   const { error } = await supabaseAdmin
     .from('sequences')
     .update(updatePayload)
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', user.id);
 
   if (error) return apiError(error.message);
 
   // Replace all steps if provided
   if (Array.isArray(steps)) {
-    await supabaseAdmin.from('sequence_steps').delete().eq('sequence_id', params.id);
+    await supabaseAdmin.from('sequence_steps').delete().eq('sequence_id', id);
     if (steps.length > 0) {
       await supabaseAdmin.from('sequence_steps').insert(
         steps.map((s: Record<string, unknown>, i: number) => ({
-          sequence_id: params.id,
+          sequence_id: id,
           position: i,
           delay_days: s.delay_days ?? 3,
           subject_a: s.subject_a ?? '',
@@ -72,7 +76,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   const { data: updated } = await supabaseAdmin
     .from('sequences')
     .select('*, sequence_steps(*)')
-    .eq('id', params.id)
+    .eq('id', id)
     .single();
 
   return apiSuccess(updated);
@@ -83,10 +87,12 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   const user = await getAuthenticatedUser(req as unknown as Request);
   if (!user) return apiUnauthorized();
 
+  const { id } = await params;
+
   const { error } = await supabaseAdmin
     .from('sequences')
     .delete()
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', user.id);
 
   if (error) return apiError(error.message);

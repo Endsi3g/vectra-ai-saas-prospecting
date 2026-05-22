@@ -5,21 +5,23 @@ import { dispatchWebhook } from '@/lib/webhook-dispatcher';
 
 export const runtime = 'nodejs';
 
-type Ctx = { params: { id: string } };
+type Ctx = { params: Promise<{ id: string }> };
 
 export async function GET(req: NextRequest, { params }: Ctx) {
   const auth = await authenticateV1(req);
   if ('error' in auth) return auth.error;
   const { ctx } = auth;
 
+  const { id } = await params;
+
   if (ctx.isSandbox) {
-    return NextResponse.json({ data: { id: params.id, first_name: 'Alice', last_name: 'Martin', email: 'alice@startup.io', company: 'Startup SAS', score: 88, sandbox: true } });
+    return NextResponse.json({ data: { id, first_name: 'Alice', last_name: 'Martin', email: 'alice@startup.io', company: 'Startup SAS', score: 88, sandbox: true } });
   }
 
   const { data, error } = await supabaseAdmin
     .from('leads')
     .select('*')
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', ctx.userId)
     .single();
 
@@ -34,7 +36,9 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   const writeErr = writeRequired(ctx);
   if (writeErr) return writeErr;
 
-  if (ctx.isSandbox) return NextResponse.json({ data: { id: params.id, updated: true, sandbox: true } });
+  const { id } = await params;
+
+  if (ctx.isSandbox) return NextResponse.json({ data: { id, updated: true, sandbox: true } });
 
   const body = await req.json();
   const allowed = ['first_name', 'last_name', 'email', 'company', 'title', 'linkedin_url', 'score', 'status', 'campaign_id'];
@@ -43,7 +47,7 @@ export async function PUT(req: NextRequest, { params }: Ctx) {
   const { data, error } = await supabaseAdmin
     .from('leads')
     .update(update)
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', ctx.userId)
     .select()
     .single();
@@ -60,15 +64,17 @@ export async function DELETE(req: NextRequest, { params }: Ctx) {
   const writeErr = writeRequired(ctx);
   if (writeErr) return writeErr;
 
+  const { id } = await params;
+
   if (ctx.isSandbox) return NextResponse.json({ deleted: true, sandbox: true });
 
   const { error } = await supabaseAdmin
     .from('leads')
     .delete()
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', ctx.userId);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  void dispatchWebhook(ctx.userId, 'lead.deleted', { id: params.id });
+  void dispatchWebhook(ctx.userId, 'lead.deleted', { id });
   return NextResponse.json({ deleted: true });
 }

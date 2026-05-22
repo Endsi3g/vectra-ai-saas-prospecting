@@ -5,15 +5,19 @@ import { apiError, apiSuccess, apiUnauthorized } from '@/lib/api-response';
 
 export const runtime = 'nodejs';
 
+type Ctx = { params: Promise<{ id: string }> };
+
 // GET /api/sequences/[id]/stats — stats per step + heatmap + timeline
-export async function GET(req: NextRequest, { params }: { params: { id: string } }) {
+export async function GET(req: NextRequest, { params }: Ctx) {
   const user = await getAuthenticatedUser(req as unknown as Request);
   if (!user) return apiUnauthorized();
+
+  const { id } = await params;
 
   const { data: seq } = await supabaseAdmin
     .from('sequences')
     .select('id, name, status, send_hour, sequence_steps(id, position)')
-    .eq('id', params.id)
+    .eq('id', id)
     .eq('user_id', user.id)
     .single();
   if (!seq) return apiError('Séquence introuvable.', 404);
@@ -33,7 +37,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const { data: stepDetails } = await supabaseAdmin
     .from('sequence_steps')
     .select('id, position, subject_a, subject_b, delay_days, ab_test_enabled, ab_winner')
-    .eq('sequence_id', params.id)
+    .eq('sequence_id', id)
     .order('position');
 
   type Send = {
@@ -86,7 +90,7 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const { data: enrollments } = await supabaseAdmin
     .from('sequence_enrollments')
     .select('id, status, stop_reason, current_step, enrolled_at, completed_at, lead_id')
-    .eq('sequence_id', params.id)
+    .eq('sequence_id', id)
     .order('enrolled_at', { ascending: false });
 
   const enr = enrollments ?? [];

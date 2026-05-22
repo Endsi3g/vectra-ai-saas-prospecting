@@ -1,0 +1,6 @@
+-- 20260528000000_nurture_flags.sql
+ALTER TABLE public.profiles
+  ADD COLUMN IF NOT EXISTS welcome_email_sent BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS j1_email_sent BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS j3_email_sent BOOLEAN DEFAULT false,
+  ADD COLUMN IF NOT EXISTS j7_email_sent BOOLEAN DEFAULT false;

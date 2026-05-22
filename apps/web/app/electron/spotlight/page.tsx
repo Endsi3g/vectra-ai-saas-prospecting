@@ -66,7 +66,7 @@ export default function SpotlightPage() {
       className="w-full h-full bg-zinc-900/95 backdrop-blur-xl rounded-2xl border border-zinc-700/50 shadow-2xl overflow-hidden flex flex-col"
       onDrop={(e) => {
         e.preventDefault();
-        const files = Array.from(e.dataTransfer.files).map((f) => f.path ?? '');
+        const files = Array.from(e.dataTransfer.files).map((f) => (f as any).path ?? '');
         if (files.length > 0) window.electron?.notifyPdfDropped?.(files);
       }}
       onDragOver={(e) => e.preventDefault()}
@@ -146,13 +146,4 @@ export default function SpotlightPage() {
   );
 }
 
-// Extend window type for Electron bridge
-declare global {
-  interface Window {
-    electron?: {
-      closeSpotlight?: () => void;
-      notifyPdfDropped?: (paths: string[]) => void;
-      [key: string]: unknown;
-    };
-  }
-}
+
