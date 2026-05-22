@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+Disallow: /app/
+Disallow: /api/
+Disallow: /onboarding/
+Disallow: /electron/
+
+Sitemap: https://vectra-ai-saas-prospecting.vercel.app/sitemap.xml
