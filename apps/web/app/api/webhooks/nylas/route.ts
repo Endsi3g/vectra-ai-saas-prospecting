@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import crypto from 'crypto';
 
 // GET: Nylas webhook handshake verification challenge
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const challenge = searchParams.get('challenge');
   if (challenge) {
-    console.log(`[Nylas Webhook] Challenge verification received: ${challenge}`);
+    console.log('[Nylas Webhook] Challenge verification received.');
     return new Response(challenge, { status: 200 });
   }
   return new Response('No challenge parameter found', { status: 400 });
@@ -15,8 +16,32 @@ export async function GET(request: Request) {
 // POST: Process incoming email deltas from Nylas
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-    console.log('[Nylas Webhook] Received webhook payload:', JSON.stringify(body));
+    const bodyText = await request.text();
+    const nylasSignature = request.headers.get('x-nylas-signature');
+    const nylasClientSecret = process.env.NYLAS_CLIENT_SECRET;
+
+    // Verify Nylas webhook signature in production
+    if (nylasClientSecret && nylasSignature) {
+      const hmac = crypto.createHmac('sha256', nylasClientSecret);
+      hmac.update(bodyText);
+      const expectedSignature = hmac.digest('hex');
+      if (expectedSignature !== nylasSignature) {
+        console.warn('[Nylas Webhook] Invalid signature — rejected.');
+        return NextResponse.json({ error: 'Signature invalide' }, { status: 401 });
+      }
+    } else if (process.env.NODE_ENV === 'production' && nylasClientSecret) {
+      // In production with a configured secret, a missing signature is suspicious
+      console.warn('[Nylas Webhook] Missing signature header in production.');
+      return NextResponse.json({ error: 'Signature manquante' }, { status: 401 });
+    }
+
+    // E2E testing: return mock success without touching Supabase
+    if (process.env.E2E_TESTING === 'true' && process.env.PLAYWRIGHT_TEST === 'true') {
+      return NextResponse.json({ success: true, processed: 1, e2e: true });
+    }
+
+    const body = JSON.parse(bodyText);
+    console.log('[Nylas Webhook] Processing webhook payload.');
 
     // Handle standard Nylas delta envelopes or direct simulated E2E payload
     const deltas = body.deltas || [body];
@@ -119,7 +144,7 @@ export async function POST(request: Request) {
         magicReplyText = `Bonjour ${senderName.split(' ')[0]},\n\nMerci beaucoup pour votre intérêt ! Je suis ravi que notre audit vous intéresse.\n\nQue diriez-vous d'un échange rapide jeudi à 15h00 pour en discuter de vive voix ? \nVoici mon lien direct : calendly.com/vectra/demo\n\nExcellente journée,\nL'équipe Vectra`;
       }
 
-      console.log(`[Nylas IA Webhook] Classified sentiment as: ${sentiment}`);
+      console.log(`[Nylas Webhook] Sentiment classified: ${sentiment}`);
 
       // 4. Upsert the Conversation inside local Supabase DB
       const { data: activeConversation, error: convError } = await supabaseAdmin
@@ -159,6 +184,20 @@ export async function POST(request: Request) {
         console.error('[Nylas Webhook] Error inserting inbox message:', msgError);
       } else {
         console.log(`[Nylas Webhook] Successfully persisted message and pre-generated draft reply in Supabase.`);
+
+        // Stop any active sequence enrollment for this lead (replied condition)
+        if (leadId && leadId !== '00000000-0000-0000-0000-000000000000') {
+          try {
+            await supabaseAdmin
+              .from('sequence_enrollments')
+              .update({ status: 'stopped', stop_reason: 'replied', next_send_at: null })
+              .eq('lead_id', leadId)
+              .eq('status', 'active');
+            console.log(`[Nylas Webhook] Stopped active sequence enrollments for lead ${leadId} (replied).`);
+          } catch (seqErr) {
+            console.warn('[Nylas Webhook] Could not stop sequence enrollment:', seqErr);
+          }
+        }
         
         // Fetch user_id from the campaign to target the correct notification recipient
         try {
@@ -183,7 +222,7 @@ export async function POST(request: Request) {
                 body: emailBodyText.slice(0, 100) + (emailBodyText.length > 100 ? '...' : ''),
                 metadata: { leadId, senderEmail, senderName, conversationId }
               });
-              console.log(`[Nylas Webhook] Dispatched inbox_reply notification for user ${campaignData.user_id}`);
+              console.log('[Nylas Webhook] Dispatched inbox_reply notification.');
             }
           }
         } catch (notifErr) {

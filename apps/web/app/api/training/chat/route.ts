@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getCompletion } from '@/lib/ai';
+import { getAuthenticatedUser } from '@/lib/auth-helper';
 
 const PERSONA_PROMPTS: Record<string, string> = {
   ceo_busy: `Tu incarnes Marc, PDG d'une PME de 50 salariés. Tu es extrêmement occupé, souvent en réunion, et tu n'as pas de temps à perdre avec les vendeurs. Tu veux des preuves concrètes de ROI immédiat. Si l'interlocuteur est vague ou peu convaincant, tu raccroches rapidement. Tu poses des questions directes : combien ça coûte, combien ça rapporte, et combien de temps ça prend.`,
@@ -15,6 +16,11 @@ const DIFFICULTY_MODIFIERS: Record<string, string> = {
 
 export async function POST(req: Request) {
   try {
+    const user = await getAuthenticatedUser(req);
+    if (!user) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    }
+
     const { persona, difficulty, messages } = await req.json();
 
     if (!persona || !difficulty || !messages) {

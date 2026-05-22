@@ -95,11 +95,11 @@ export async function POST(req: Request) {
         return_url: returnUrl,
       });
 
-      console.log(`[STRIPE PORTAL CREATED] Customer: ${customerId} for User: ${userId}`);
+      console.log('[STRIPE PORTAL CREATED] Billing portal session created.');
       return NextResponse.json({ url: session.url });
     } else {
       // Local development or Testing mock redirection fallback
-      console.log(`[STRIPE PORTAL MOCK] Creating mock portal session for user ${userId}`);
+      console.log('[STRIPE PORTAL MOCK] Creating mock portal session.');
       const fallbackUrl = `${req.headers.get('origin') || 'http://localhost:3000'}/app/settings?billing_status=portal_success`;
       return NextResponse.json({ 
         url: fallbackUrl,

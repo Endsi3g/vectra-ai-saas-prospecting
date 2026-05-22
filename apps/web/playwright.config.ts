@@ -2,15 +2,16 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './tests',
-  fullyParallel: false, // Run tests sequentially to avoid database/mock conflicts
+  fullyParallel: false,
   forbidOnly: !!process.env.CI,
-  retries: 0,
-  workers: 1, // Use single worker for simplicity
-  reporter: 'list',
+  retries: process.env.CI ? 2 : 0,
+  workers: 1,
+  reporter: process.env.CI ? 'github' : 'list',
   use: {
-    baseURL: 'http://localhost:3000',
+    baseURL: process.env.PLAYWRIGHT_BASE_URL ?? 'http://localhost:3000',
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    video: 'retain-on-failure',
   },
   projects: [
     {
@@ -27,6 +28,7 @@ export default defineConfig({
     timeout: 30000,
     env: {
       PLAYWRIGHT_TEST: 'true',
+      E2E_TESTING: 'true',
     },
   },
 });

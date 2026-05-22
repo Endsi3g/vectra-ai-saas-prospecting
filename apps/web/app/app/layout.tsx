@@ -36,7 +36,8 @@ import {
   TrendingUp,
   CalendarClock,
   PhoneCall,
-  Send
+  Send,
+  Zap
 } from 'lucide-react';
 import TourGuide from '@/components/TourGuide';
 import ProfileDropdown from '@/components/ProfileDropdown';
@@ -333,6 +334,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       icon: Send,
     },
     {
+      name: 'Séquences',
+      href: '/app/sequences',
+      icon: Zap,
+    },
+    {
       name: 'Agents',
       href: '/app/agents',
       icon: Bot,
@@ -361,6 +367,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { name: 'Referrals', href: '/app/settings/referrals', icon: Gift },
     { name: 'API/MCP', href: '/app/settings/api-mcp', icon: Terminal },
     { name: 'Brevo', href: '/app/settings/brevo', icon: Send },
+    { name: 'Developer', href: '/app/settings/developer', icon: Terminal },
   ];
 
   const isItemActive = (href: string) => {

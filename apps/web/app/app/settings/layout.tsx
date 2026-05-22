@@ -43,6 +43,7 @@ export default function SettingsSubLayout({ children }: { children: React.ReactN
   else if (pathname.includes('/referrals')) pageName = 'Referrals';
   else if (pathname.includes('/api-mcp')) pageName = 'API/MCP';
   else if (pathname.includes('/brevo')) pageName = 'Brevo';
+  else if (pathname.includes('/developer')) pageName = 'Developer';
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-white">

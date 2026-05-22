@@ -1,0 +1,485 @@
+openapi: "3.1.0"
+info:
+  title: Vectra API
+  version: "1.0.0"
+  description: |
+    API publique Vectra — automatisez votre prospection B2B.
+
+    ## Authentification
+    Toutes les requêtes doivent inclure un header `Authorization: Bearer <your_key>`.
+
+    - **Live** : clés `vt_live_xxx` — crédits consommés, données réelles.
+    - **Sandbox** : clés `vt_test_xxx` — aucun crédit consommé, données mock.
+
+    Générez vos clés depuis `/app/settings/developer`.
+
+  contact:
+    name: Support Vectra
+    url: https://vectra-ai-saas-prospecting.vercel.app
+
+servers:
+  - url: https://vectra-ai-saas-prospecting.vercel.app/api/v1
+    description: Production
+  - url: http://localhost:3000/api/v1
+    description: Local
+
+tags:
+  - name: Leads
+    description: Gestion des leads B2B
+  - name: Campaigns
+    description: Campagnes de prospection
+  - name: Sequences
+    description: Séquences email automatisées
+  - name: Sourcing
+    description: Sourcing IA de leads
+  - name: Messages
+    description: Génération de messages personnalisés
+  - name: Webhooks
+    description: Webhooks sortants
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      description: "Format: Bearer vt_live_xxx (live) ou Bearer vt_test_xxx (sandbox)"
+
+  schemas:
+    Lead:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        first_name: { type: string, nullable: true }
+        last_name: { type: string, nullable: true }
+        email: { type: string, format: email, nullable: true }
+        company: { type: string, nullable: true }
+        title: { type: string, nullable: true }
+        linkedin_url: { type: string, nullable: true }
+        score: { type: integer, minimum: 0, maximum: 100, nullable: true }
+        status: { type: string, enum: [sourced, contacted, interested, not_interested, converted] }
+        created_at: { type: string, format: date-time }
+
+    Campaign:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        offer: { type: string, nullable: true }
+        icp: { type: string, nullable: true }
+        angle: { type: string, nullable: true }
+        status: { type: string }
+        created_at: { type: string, format: date-time }
+
+    Sequence:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        status: { type: string, enum: [draft, active, paused, archived] }
+        send_hour: { type: integer, minimum: 0, maximum: 23 }
+        campaign_id: { type: string, format: uuid, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    GeneratedMessage:
+      type: object
+      properties:
+        reasoning: { type: string }
+        email_subject: { type: string }
+        email_body: { type: string }
+        linkedin_message: { type: string }
+        personalization_score: { type: integer, minimum: 0, maximum: 100 }
+        message_id: { type: string, format: uuid, description: "Present only if save=true" }
+
+    WebhookEndpoint:
+      type: object
+      properties:
+        id: { type: string, format: uuid }
+        url: { type: string, format: uri }
+        events: { type: array, items: { type: string } }
+        is_active: { type: boolean }
+        description: { type: string, nullable: true }
+        created_at: { type: string, format: date-time }
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error: { type: string }
+
+security:
+  - bearerAuth: []
+
+paths:
+  /leads:
+    get:
+      tags: [Leads]
+      summary: Lister les leads
+      parameters:
+        - in: query
+          name: campaign_id
+          schema: { type: string, format: uuid }
+        - in: query
+          name: q
+          description: Recherche par nom, email ou entreprise
+          schema: { type: string }
+        - in: query
+          name: limit
+          schema: { type: integer, default: 50, maximum: 200 }
+        - in: query
+          name: offset
+          schema: { type: integer, default: 0 }
+      responses:
+        "200":
+          description: Liste des leads
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Lead" } }
+                  total: { type: integer }
+                  limit: { type: integer }
+                  offset: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "429": { $ref: "#/components/responses/RateLimited" }
+    post:
+      tags: [Leads]
+      summary: Créer un ou plusieurs leads (bulk)
+      description: Envoyez un objet pour un lead, ou un tableau pour jusqu'à 500 leads.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/Lead"
+                - type: array
+                  items: { $ref: "#/components/schemas/Lead" }
+                  maxItems: 500
+      responses:
+        "201":
+          description: Leads créés
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Lead" } }
+                  count: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthorized" }
+        "422": { $ref: "#/components/responses/UnprocessableEntity" }
+
+  /leads/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Leads]
+      summary: Récupérer un lead
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Lead" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      tags: [Leads]
+      summary: Mettre à jour un lead
+      requestBody:
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Lead" }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Lead" }
+    delete:
+      tags: [Leads]
+      summary: Supprimer un lead
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted: { type: boolean }
+
+  /campaigns:
+    get:
+      tags: [Campaigns]
+      summary: Lister les campagnes
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Campaign" } }
+    post:
+      tags: [Campaigns]
+      summary: Créer une campagne
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                offer: { type: string }
+                icp: { type: string }
+                angle: { type: string }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Campaign" }
+
+  /sequences:
+    get:
+      tags: [Sequences]
+      summary: Lister les séquences
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/Sequence" } }
+    post:
+      tags: [Sequences]
+      summary: Créer une séquence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string }
+                send_hour: { type: integer, minimum: 0, maximum: 23, default: 9 }
+                campaign_id: { type: string, format: uuid }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Sequence" }
+
+  /sequences/{id}:
+    parameters:
+      - in: path
+        name: id
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      tags: [Sequences]
+      summary: Détail d'une séquence
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/Sequence" }
+    post:
+      tags: [Sequences]
+      summary: Enrôler des leads dans la séquence
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lead_ids]
+              properties:
+                lead_ids:
+                  type: array
+                  items: { type: string, format: uuid }
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  enrolled: { type: integer }
+
+  /sourcing:
+    post:
+      tags: [Sourcing]
+      summary: Lancer un sourcing IA
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [query]
+              properties:
+                query: { type: string, example: "SaaS B2B en croissance avec 10-50 employés à Paris" }
+                campaign_id: { type: string, format: uuid }
+                limit: { type: integer, default: 10, maximum: 50 }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  candidates:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: "#/components/schemas/Lead"
+                        - type: object
+                          properties:
+                            reason: { type: string }
+                  query: { type: string }
+                  count: { type: integer }
+
+  /messages/generate:
+    post:
+      tags: [Messages]
+      summary: Générer un message personnalisé pour un lead
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [lead_id]
+              properties:
+                lead_id: { type: string, format: uuid }
+                campaign_id: { type: string, format: uuid }
+                tone:
+                  type: string
+                  enum: [professional, casual, direct]
+                  default: professional
+                save:
+                  type: boolean
+                  default: false
+                  description: Si true, sauvegarde le message dans la base et déclenche le webhook message.generated
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/GeneratedMessage" }
+
+  /webhooks:
+    get:
+      tags: [Webhooks]
+      summary: Lister les webhooks
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { type: array, items: { $ref: "#/components/schemas/WebhookEndpoint" } }
+    post:
+      tags: [Webhooks]
+      summary: Créer un webhook
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [url, events]
+              properties:
+                url: { type: string, format: uri, description: "URL HTTPS de réception" }
+                events:
+                  type: array
+                  items:
+                    type: string
+                    enum:
+                      - lead.created
+                      - lead.updated
+                      - lead.deleted
+                      - message.generated
+                      - message.approved
+                      - message.sent
+                      - sequence.step_sent
+                      - sequence.completed
+                      - sequence.stopped
+                      - inbox.reply_received
+                      - inbox.sentiment_changed
+                description:
+                  type: string
+      responses:
+        "201":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  data: { $ref: "#/components/schemas/WebhookEndpoint" }
+    delete:
+      tags: [Webhooks]
+      summary: Supprimer un webhook
+      parameters:
+        - in: query
+          name: id
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  deleted: { type: boolean }
+
+components:
+  responses:
+    Unauthorized:
+      description: Clé API manquante ou invalide
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    RateLimited:
+      description: Limite de requêtes atteinte
+      content:
+        application/json:
+          schema:
+            allOf:
+              - $ref: "#/components/schemas/Error"
+              - type: object
+                properties:
+                  retry_after: { type: integer, description: "Secondes avant de réessayer" }
+    NotFound:
+      description: Ressource introuvable
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    UnprocessableEntity:
+      description: Données invalides
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
