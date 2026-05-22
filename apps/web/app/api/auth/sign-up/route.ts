@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { sendWelcomeEmail } from '@/lib/email';
 
 export async function POST(req: Request) {
   try {
@@ -44,6 +45,14 @@ export async function POST(req: Request) {
 
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+
+    // Fire welcome email asynchronously (no await to prevent delaying user response)
+    if (data.user && data.user.email) {
+      const name = data.user.user_metadata?.full_name || email.split('@')[0];
+      sendWelcomeEmail(data.user.email, name).catch((err) => {
+        console.error('[WELCOME EMAIL ERROR]', err);
+      });
     }
 
     return NextResponse.json({ success: true, user: data.user, session: data.session });

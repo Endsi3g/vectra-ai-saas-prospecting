@@ -9,11 +9,11 @@ export async function updateSession(request: NextRequest) {
     !pathname.startsWith('/api/webhooks') &&
     !pathname.startsWith('/api/billing')
   ) {
-    let ip = request.ip;
+    let ip: string | undefined = (request as any).ip;
     if (!ip) {
       const forwardedFor = request.headers.get('x-forwarded-for');
       if (forwardedFor) {
-        ip = forwardedFor.split(',')[0].trim();
+        ip = forwardedFor.split(',')[0]?.trim();
       }
     }
     if (!ip) {

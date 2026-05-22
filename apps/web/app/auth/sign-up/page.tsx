@@ -20,6 +20,8 @@ export default function SignUpPage() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
   const turnstileRef = useRef<HTMLDivElement>(null);
+  const [submitted, setSubmitted] = useState(false);
+  const [submittedEmail, setSubmittedEmail] = useState('');
 
   const siteKey = process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY || '1x00000000000000000000AA';
 
@@ -89,11 +91,9 @@ export default function SignUpPage() {
 
       if (signInError) {
         // If email confirmation is required:
-        if (signInError.message.includes('Email not confirmed')) {
-          setMessage({
-            type: 'success',
-            text: 'Inscription réussie ! Veuillez vérifier vos e-mails pour confirmer votre compte.',
-          });
+        if (signInError.message.toLowerCase().includes('email not confirmed') || signInError.message.toLowerCase().includes('confirm your email') || signInError.message.toLowerCase().includes('confirmation')) {
+          setSubmittedEmail(email);
+          setSubmitted(true);
           return;
         }
         throw signInError;
@@ -102,6 +102,10 @@ export default function SignUpPage() {
       if (data?.user) {
         setMessage({ type: 'success', text: 'Inscription réussie ! Redirection en cours...' });
         setTimeout(() => router.push('/onboarding'), 1500);
+      } else {
+        // Fallback to submitted screen if no immediate session is returned
+        setSubmittedEmail(email);
+        setSubmitted(true);
       }
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || "Une erreur est survenue lors de l'inscription." });
@@ -124,6 +128,67 @@ export default function SignUpPage() {
       setLoading(false);
     }
   };
+
+  if (submitted) {
+    return (
+      <AuthShell
+        title="Vérifiez votre boîte"
+        footerText="Pas reçu l'e-mail ?"
+        footerLinkText="Renvoyer l'invitation"
+        footerLinkHref="#"
+      >
+        <div className="space-y-6 text-zinc-950 font-sans py-4">
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50 p-5 space-y-4 shadow-sm relative overflow-hidden">
+            <div className="absolute top-0 left-0 w-1.5 h-full bg-primary" />
+            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary mb-2">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path d="M22 2 2 8.66 11.58 12.42 15.34 22 22 2Z" />
+                <path d="M11.58 12.42 22 2" />
+              </svg>
+            </div>
+            
+            <h3 className="font-extrabold text-base text-zinc-900">
+              Lien de confirmation envoyé ! 🚀
+            </h3>
+            
+            <p className="text-xs text-zinc-500 leading-relaxed font-normal">
+              Un e-mail de validation vient d&apos;être envoyé à l&apos;adresse suivante :
+            </p>
+            
+            <div className="bg-white border border-zinc-150 rounded-lg px-3.5 py-2.5 font-mono text-[11px] font-semibold text-zinc-700 select-all text-center">
+              {submittedEmail}
+            </div>
+
+            <p className="text-xs text-zinc-500 leading-relaxed font-normal">
+              Veuillez cliquer sur le lien d&apos;activation contenu dans ce message pour finaliser la création de votre compte et accéder à votre espace de prospection.
+            </p>
+          </div>
+
+          <div className="space-y-2.5">
+            <a
+              href={`https://mail.google.com/mail/u/0/#search/from%3Avectra.ai`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="w-full h-11 rounded-lg bg-zinc-900 text-white text-xs font-bold flex items-center justify-center gap-2 hover:bg-zinc-800 transition-colors"
+            >
+              Ouvrir Gmail
+            </a>
+
+            <button
+              type="button"
+              onClick={() => {
+                setSubmitted(false);
+                setMessage(null);
+              }}
+              className="w-full h-11 rounded-lg border border-zinc-200 bg-white text-zinc-600 text-xs font-bold hover:bg-zinc-50 transition-colors"
+            >
+              Retourner à l&apos;inscription
+            </button>
+          </div>
+        </div>
+      </AuthShell>
+    );
+  }
 
   return (
     <AuthShell

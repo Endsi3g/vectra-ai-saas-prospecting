@@ -106,8 +106,28 @@ export default function OnboardingPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         let workspaceId = null;
-        if (companyName) {
-          // Create workspace in Supabase
+
+        // Fetch user profile to check if a workspace was auto-created
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('workspace_id')
+          .eq('id', user.id)
+          .single();
+
+        if (profile?.workspace_id) {
+          workspaceId = profile.workspace_id;
+          if (companyName) {
+            // Update existing workspace name & slug
+            await supabase
+              .from('workspaces')
+              .update({
+                name: companyName,
+                slug: companyName.toLowerCase().replace(/[^a-z0-9]/g, '-'),
+              })
+              .eq('id', workspaceId);
+          }
+        } else if (companyName) {
+          // Fallback: Create new workspace in Supabase if none exists
           const { data: ws } = await supabase
             .from('workspaces')
             .insert({
