@@ -36,7 +36,8 @@ import {
   TrendingUp,
   CalendarClock,
   PhoneCall,
-  Send
+  Send,
+  Zap
 } from 'lucide-react';
 import TourGuide from '@/components/TourGuide';
 import ProfileDropdown from '@/components/ProfileDropdown';
@@ -331,6 +332,11 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
       name: 'Brevo',
       href: '/app/brevo',
       icon: Send,
+    },
+    {
+      name: 'Séquences',
+      href: '/app/sequences',
+      icon: Zap,
     },
     {
       name: 'Agents',

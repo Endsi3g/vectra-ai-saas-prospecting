@@ -184,6 +184,20 @@ export async function POST(request: Request) {
         console.error('[Nylas Webhook] Error inserting inbox message:', msgError);
       } else {
         console.log(`[Nylas Webhook] Successfully persisted message and pre-generated draft reply in Supabase.`);
+
+        // Stop any active sequence enrollment for this lead (replied condition)
+        if (leadId && leadId !== '00000000-0000-0000-0000-000000000000') {
+          try {
+            await supabaseAdmin
+              .from('sequence_enrollments')
+              .update({ status: 'stopped', stop_reason: 'replied', next_send_at: null })
+              .eq('lead_id', leadId)
+              .eq('status', 'active');
+            console.log(`[Nylas Webhook] Stopped active sequence enrollments for lead ${leadId} (replied).`);
+          } catch (seqErr) {
+            console.warn('[Nylas Webhook] Could not stop sequence enrollment:', seqErr);
+          }
+        }
         
         // Fetch user_id from the campaign to target the correct notification recipient
         try {
