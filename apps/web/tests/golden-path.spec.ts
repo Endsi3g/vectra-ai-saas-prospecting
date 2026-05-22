@@ -80,7 +80,7 @@ test.describe('Golden Path — Vectra', () => {
     await page.goto('/app/settings');
     await expect(page.locator('main')).toBeVisible({ timeout: 8_000 });
     // Should show profile/settings content
-    await expect(page.getByText(/settings|paramètres|profil/i)).toBeVisible({ timeout: 6_000 });
+    await expect(page.getByText(/settings|paramètres|profil/i).first()).toBeVisible({ timeout: 6_000 });
   });
 
 });

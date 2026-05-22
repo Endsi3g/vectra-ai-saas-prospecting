@@ -17,7 +17,7 @@ export async function signIn(page: Page, email = TEST_EMAIL, password = TEST_PAS
   await page.goto('/auth/sign-in');
   await page.locator('#signin-email').fill(email);
   await page.locator('#signin-password').fill(password);
-  await page.getByRole('button', { name: /connexion|se connecter/i }).click();
+  await page.getByRole('button', { name: 'Se connecter', exact: true }).click();
 }
 
 export async function signOut(page: Page) {

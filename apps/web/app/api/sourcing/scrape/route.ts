@@ -65,10 +65,54 @@ const MOCK_LEAD_POOL = [
   }
 ];
 
+const WHITELIST_DOMAINS = [
+  'linkedin.com',
+  'news.ycombinator.com',
+  'github.com',
+  'google.com',
+  'optima-ai.io',
+  'flowstate.co',
+  'vidio.io',
+  'ledgerly.app',
+  'logix-systems.fr',
+  'talentloop.ai'
+];
+
 export async function POST(req: Request) {
   try {
     const body = await req.json();
     const { query, url, limit = 3 } = body;
+
+    // Target domain whitelist verification
+    if (url) {
+      let hostname = '';
+      try {
+        const parsed = new URL(url);
+        hostname = parsed.hostname.toLowerCase();
+      } catch (e) {
+        try {
+          const parsed = new URL('https://' + url);
+          hostname = parsed.hostname.toLowerCase();
+        } catch (err) {
+          return NextResponse.json(
+            { error: 'Format de site web invalide.' },
+            { status: 400 }
+          );
+        }
+      }
+
+      const isAllowed = WHITELIST_DOMAINS.some(domain => 
+        hostname === domain || hostname.endsWith('.' + domain)
+      );
+
+      if (!isAllowed) {
+        return NextResponse.json(
+          { error: `Scraping non autorisé pour ce domaine. Domaines autorisés: ${WHITELIST_DOMAINS.join(', ')}` },
+          { status: 400 }
+        );
+      }
+    }
+
 
     // 1. Authenticate user & check credits
     let userId: string | null = null;

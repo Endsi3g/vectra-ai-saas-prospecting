@@ -1,7 +1,42 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { checkRateLimitGlobal } from './rate-limit'
 
 export async function updateSession(request: NextRequest) {
+  const pathname = request.nextUrl.pathname;
+  if (
+    pathname.startsWith('/api/') &&
+    !pathname.startsWith('/api/webhooks') &&
+    !pathname.startsWith('/api/billing')
+  ) {
+    let ip = request.ip;
+    if (!ip) {
+      const forwardedFor = request.headers.get('x-forwarded-for');
+      if (forwardedFor) {
+        ip = forwardedFor.split(',')[0].trim();
+      }
+    }
+    if (!ip) {
+      ip = '127.0.0.1';
+    }
+
+    const limitResult = await checkRateLimitGlobal(ip);
+    if (!limitResult.success) {
+      return new NextResponse(
+        JSON.stringify({ error: 'Too many requests. Please try again later.' }),
+        {
+          status: 429,
+          headers: {
+            'Content-Type': 'application/json',
+            'X-RateLimit-Limit': limitResult.limit.toString(),
+            'X-RateLimit-Remaining': limitResult.remaining.toString(),
+            'X-RateLimit-Reset': limitResult.reset.toString(),
+          },
+        }
+      );
+    }
+  }
+
   const isE2eTesting = process.env.NODE_ENV === 'development' || process.env.PLAYWRIGHT_TEST === 'true';
   const hasBypassParam = isE2eTesting && (
     request.nextUrl.searchParams.get('bypass') === 'true' ||

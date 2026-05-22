@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 import { getCompletion } from '@/lib/ai';
+import { getAuthenticatedUser } from '@/lib/auth-helper';
+import { checkRateLimitLLM } from '@/lib/rate-limit';
 
 // Helper to sleep for simulation delays
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
@@ -272,13 +274,9 @@ export async function POST(req: Request) {
     let userFirstName: string | undefined;
 
     if (!userId) {
-      const authHeader = req.headers.get('Authorization');
-      if (authHeader && authHeader.startsWith('Bearer ')) {
-        const token = authHeader.substring(7);
-        const { data: { user } } = await supabaseAdmin.auth.getUser(token);
-        if (user) {
-          userId = user.id;
-        }
+      const user = await getAuthenticatedUser(req);
+      if (user) {
+        userId = user.id;
       }
     }
 
@@ -294,6 +292,26 @@ export async function POST(req: Request) {
         campaignDetails = data;
         userId = userId || data.user_id;
       }
+    }
+
+    if (!userId) {
+      return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
+    }
+
+    // Enforce LLM Rate Limits: 10 requests per minute per user
+    const limitResult = await checkRateLimitLLM(userId);
+    if (!limitResult.success) {
+      return NextResponse.json(
+        { error: 'Rate limit exceeded: 10 requests per minute.' },
+        {
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': limitResult.limit.toString(),
+            'X-RateLimit-Remaining': limitResult.remaining.toString(),
+            'X-RateLimit-Reset': limitResult.reset.toString(),
+          }
+        }
+      );
     }
 
     if (userId) {

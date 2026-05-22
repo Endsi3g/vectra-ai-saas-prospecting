@@ -10,6 +10,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Champs requis manquants: to, subject, body, mailbox_id' }, { status: 400 });
     }
 
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(to)) {
+      return NextResponse.json({ error: 'Format d\'email invalide' }, { status: 400 });
+    }
+
+
     // Authenticate user
     let userId: string | null = null;
     const authHeader = req.headers.get('Authorization');

@@ -4,10 +4,20 @@ import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(req: Request) {
   try {
+    const contentLengthHeader = req.headers.get('content-length');
+    if (!contentLengthHeader) {
+      return NextResponse.json({ error: 'Content-Length header is required.' }, { status: 411 });
+    }
+    const contentLength = parseInt(contentLengthHeader, 10);
+    if (isNaN(contentLength) || contentLength > 5 * 1024 * 1024) {
+      return NextResponse.json({ error: 'Payload size exceeds 5MB limit.' }, { status: 413 });
+    }
+
     const user = await getAuthenticatedUser(req);
     if (!user) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
+
 
     const body = await req.json();
     const { leads, listId } = body;
