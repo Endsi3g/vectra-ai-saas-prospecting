@@ -367,6 +367,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     { name: 'Referrals', href: '/app/settings/referrals', icon: Gift },
     { name: 'API/MCP', href: '/app/settings/api-mcp', icon: Terminal },
     { name: 'Brevo', href: '/app/settings/brevo', icon: Send },
+    { name: 'Developer', href: '/app/settings/developer', icon: Terminal },
   ];
 
   const isItemActive = (href: string) => {
