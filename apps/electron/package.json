@@ -1,0 +1,79 @@
+{
+  "name": "vectra-electron",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vectra Desktop App",
+  "main": "dist/main/index.js",
+  "scripts": {
+    "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",
+    "dev:main": "tsc -p tsconfig.main.json --watch",
+    "dev:renderer": "electron .",
+    "build": "npm run build:main && electron-builder",
+    "build:main": "tsc -p tsconfig.main.json",
+    "typecheck": "tsc --noEmit",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder"
+  },
+  "dependencies": {
+    "@workspace/core": "*",
+    "@supabase/supabase-js": "^2.106.0",
+    "auto-launch": "^5.0.6",
+    "electron-updater": "^6.3.9",
+    "keytar": "^7.9.0",
+    "pdf-parse": "^1.1.1",
+    "screenshot-desktop": "^1.15.0"
+  },
+  "devDependencies": {
+    "@types/auto-launch": "^5.0.5",
+    "@types/node": "^25.1.0",
+    "@types/pdf-parse": "^1.1.5",
+    "@workspace/typescript-config": "*",
+    "concurrently": "^9.1.2",
+    "electron": "^36.2.1",
+    "electron-builder": "^26.0.12",
+    "typescript": "^5.9.3"
+  },
+  "build": {
+    "appId": "com.vectra.app",
+    "productName": "Vectra",
+    "asar": true,
+    "directories": {
+      "buildResources": "assets",
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "assets/**/*"
+    ],
+    "mac": {
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] }
+      ],
+      "icon": "assets/icon.icns",
+      "category": "public.app-category.productivity",
+      "darkModeSupport": true,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] }
+      ],
+      "icon": "assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false,
+      "deleteAppDataOnUninstall": false
+    },
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Endsi3g",
+        "repo": "vectra-ai-saas-prospecting"
+      }
+    ]
+  }
+}
