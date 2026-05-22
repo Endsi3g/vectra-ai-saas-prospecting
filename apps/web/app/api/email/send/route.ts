@@ -39,9 +39,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'La boîte mail n\'est pas connectée' }, { status: 400 });
     }
 
-    const nylasClientSecret = process.env.NYLAS_CLIENT_SECRET;
+    const nylasApiKey = process.env.NYLAS_API_KEY || process.env.NYLAS_CLIENT_SECRET;
 
-    if (!nylasClientSecret) {
+    if (!nylasApiKey) {
       // Mock fallback for development
       console.log('[NYLAS MOCK] Would send email via mock mailbox.');
 
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
       {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${nylasClientSecret}`,
+          'Authorization': `Bearer ${nylasApiKey}`,
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({

@@ -199,7 +199,7 @@ export default function BrandingPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4">
           <div className="space-y-2">
-            <label className="text-xs font-bold text-zinc-700">Couleur principale</label>
+            <label className="text-xs font-bold text-zinc-700">Couleur principale (Primary Color)</label>
             <div className="flex items-center gap-3">
               <input
                 type="color"
@@ -217,7 +217,7 @@ export default function BrandingPage() {
           </div>
 
           <div className="space-y-2">
-            <label className="text-xs font-bold text-zinc-700">Couleur secondaire</label>
+            <label className="text-xs font-bold text-zinc-700">Couleur secondaire (Secondary Color)</label>
             <div className="flex items-center gap-3">
               <input
                 type="color"

@@ -180,6 +180,24 @@ export async function POST(req: Request) {
 
     if (userId) {
       try {
+        if (leads.length > 0) {
+          const deduction = leads.length * 5;
+          const { data: currentProfile } = await supabaseAdmin
+            .from('profiles')
+            .select('credits_count')
+            .eq('id', userId)
+            .single();
+
+          if (currentProfile) {
+            const newCredits = Math.max(0, currentProfile.credits_count - deduction);
+            await supabaseAdmin
+              .from('profiles')
+              .update({ credits_count: newCredits })
+              .eq('id', userId);
+            console.log(`[SCRAPER] Deducted ${deduction} credits for user ${userId}. New balance: ${newCredits}`);
+          }
+        }
+
         await supabaseAdmin.from('notifications').insert({
           user_id: userId,
           type: 'lead_added',
@@ -189,7 +207,7 @@ export async function POST(req: Request) {
         });
         console.log(`[SCRAPER] Dispatched lead_added notification for user ${userId}`);
       } catch (notifErr) {
-        console.error('[SCRAPER] Failed to dispatch lead_added notification:', notifErr);
+        console.error('[SCRAPER] Failed to deduct credits or dispatch lead_added notification:', notifErr);
       }
     }
 

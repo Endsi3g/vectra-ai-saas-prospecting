@@ -157,7 +157,7 @@ export default function DashboardPage() {
   ];
 
   const activePoints = chartRange === 'daily' ? chartDailyData : chartWeeklyData;
-  const maxVal = Math.max(...activePoints) * 1.15;
+  const maxVal = (Math.max(...activePoints) || 10) * 1.15;
   const chartHeight = 120;
   const chartWidth = 500;
 

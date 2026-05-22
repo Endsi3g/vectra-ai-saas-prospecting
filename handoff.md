@@ -1,93 +1,244 @@
 # Vectra OS — Developer Handoff Guide 📋
 
-This document outlines technical specifications, database schemas, third-party integrations, and E2E testing strategies to facilitate seamless development continuity.
+This document outlines the technical specifications, database schemas, third-party integrations, SaaS infrastructure, visual identity system, and E2E testing strategies for Vectra OS to facilitate seamless development continuity.
 
-**Last Updated:** 2026-05-20 | **Build Status:** ✅ Passing
+**Last Updated:** 2026-05-22 | **Release Version:** `v3.1.0` (Tag `4` manual release synced) | **Build Status:** ✅ Passing (19/19 Playwright E2E tests green)
 
 ---
 
 ## 1. Database Schema (Supabase SQL)
 
-The PostgreSQL tables handle user profiling, multi-campaign management, scrapers, mailboxes, and personalized messages. Full schema in [`supabase_schema.sql`](./supabase_schema.sql).
+The PostgreSQL tables handle workspaces, user profiling, collections, campaigns, lead scrapers, Nylas mailboxes, incoming messages, and notifications. The full schema is stored in [`supabase_schema.sql`](./supabase_schema.sql).
 
-### Core Tables Summary
+### Table Schema Definitions
+
+#### `workspaces`
+Groups users and profiles into shared organizations:
+```sql
+CREATE TABLE public.workspaces (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    logo_url TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+```
 
 #### `profiles`
-Tracks user workspaces, credits, and onboarding progression:
+Tracks user credentials, connected workspaces, credit balances, plans, and API keys:
 ```sql
-create table public.profiles (
-  id uuid references auth.users not null primary key,
-  email text not null,
-  business_type text, -- 'solopreneur', 'agency', 'startup'
-  credits_count integer default 1000,
-  credits_limit integer default 1000,
-  tour_completed boolean default false,
-  plan text default 'alpha_free', -- 'alpha_free', 'solo', 'agency'
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+CREATE TABLE public.profiles (
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email TEXT,
+    first_name TEXT,
+    last_name TEXT,
+    workspace_id UUID REFERENCES public.workspaces(id) ON DELETE SET NULL,
+    business_type TEXT,
+    preferred_languages TEXT[] DEFAULT '{}',
+    tone TEXT CHECK (tone IN ('friendly', 'professional', 'formal')),
+    onboarding_completed BOOLEAN DEFAULT false,
+    tour_completed BOOLEAN DEFAULT false,
+    google_connected BOOLEAN DEFAULT false,
+    credits_count INTEGER DEFAULT 2000,
+    credits_limit INTEGER DEFAULT 2000,
+    plan TEXT DEFAULT 'alpha_free',
+    stripe_customer_id TEXT,
+    stripe_subscription_id TEXT,
+    agent_config JSONB DEFAULT '{}'::jsonb,
+    brevo_api_key TEXT,
+    brevo_sender_email TEXT,
+    brevo_sender_name TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+#### `collections`
+Stores groups of leads organized by the user:
+```sql
+CREATE TABLE public.collections (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    description TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
 );
 ```
 
 #### `campaigns`
-Stores targeting criteria for active campaigns:
+Stores targeting criteria, business angles, and autopilot configuration:
 ```sql
-create table public.campaigns (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users not null,
-  name text not null,
-  business_type text,
-  offer text,
-  icp text,
-  angle text,
-  angle_description text,
-  call_to_action text,
-  extra_instructions text,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+CREATE TABLE public.campaigns (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    business_type TEXT,
+    offer TEXT,
+    icp TEXT,
+    angle TEXT,
+    angle_description TEXT,
+    call_to_action TEXT,
+    extra_instructions TEXT,
+    autopilot BOOLEAN NOT NULL DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT now()
 );
 ```
 
 #### `leads`
-Holds targeted candidates:
+Holds targeted client candidates fetched from scrapers or uploaded via CSV:
 ```sql
-create table public.leads (
-  id uuid default gen_random_uuid() primary key,
-  campaign_id uuid references public.campaigns on delete cascade not null,
-  name text not null,
-  company text not null,
-  website text,
-  email text,
-  notes text,
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+CREATE TABLE public.leads (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    campaign_id UUID NOT NULL REFERENCES public.campaigns(id) ON DELETE CASCADE,
+    name TEXT,
+    company TEXT,
+    website TEXT,
+    email TEXT,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT now()
 );
 ```
 
 #### `messages`
 Tracks personalized pitch copies generated by AI models:
 ```sql
-create table public.messages (
-  id uuid default gen_random_uuid() primary key,
-  lead_id uuid references public.leads on delete cascade not null unique,
-  email_subject text,
-  email_body text,
-  linkedin_message text,
-  personalization_score integer,
-  summary text,
-  status text default 'draft',
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null
+CREATE TABLE public.messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id UUID NOT NULL REFERENCES public.leads(id) ON DELETE CASCADE,
+    language TEXT CHECK (language IN ('fr', 'en')),
+    summary TEXT,
+    email_subject TEXT,
+    email_body TEXT,
+    linkedin_message TEXT,
+    personalization_score INTEGER DEFAULT 0,
+    status TEXT DEFAULT 'draft' CHECK (status IN ('draft', 'approved', 'discarded')),
+    created_at TIMESTAMPTZ DEFAULT now()
 );
 ```
 
 #### `mailboxes`
 Stores connected email accounts via Nylas V3:
 ```sql
-create table public.mailboxes (
-  id uuid default gen_random_uuid() primary key,
-  user_id uuid references auth.users not null,
-  email text not null,
-  provider text not null, -- 'gmail', 'outlook'
-  nylas_grant_id text not null,
-  status text default 'connected',
-  created_at timestamp with time zone default timezone('utc'::text, now()) not null,
-  unique(user_id, email)
+CREATE TABLE public.mailboxes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+    email TEXT NOT NULL UNIQUE,
+    provider TEXT NOT NULL, -- 'gmail', 'outlook', 'imap'
+    nylas_grant_id TEXT NOT NULL, -- Nylas Access Grant ID
+    status TEXT DEFAULT 'connected' NOT NULL, -- 'connected', 'error'
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+```
+
+#### `inbox_conversations`
+Maintains outbound conversion threads classified by sentiment:
+```sql
+CREATE TABLE public.inbox_conversations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id UUID REFERENCES public.leads(id) ON DELETE CASCADE NOT NULL,
+    mailbox_id UUID REFERENCES public.mailboxes(id) ON DELETE CASCADE NOT NULL,
+    nylas_thread_id TEXT NOT NULL UNIQUE,
+    sentiment TEXT DEFAULT 'interested' CHECK (sentiment IN ('interested', 'objection', 'unsubscribe')) NOT NULL,
+    last_message_text TEXT,
+    updated_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+```
+
+#### `inbox_messages`
+Stores individual emails per thread including the AI pre-generated Magic Reply Draft:
+```sql
+CREATE TABLE public.inbox_messages (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    conversation_id UUID REFERENCES public.inbox_conversations(id) ON DELETE CASCADE NOT NULL,
+    nylas_message_id TEXT NOT NULL UNIQUE,
+    sender_type TEXT CHECK (sender_type IN ('user', 'prospect')) NOT NULL,
+    body TEXT NOT NULL,
+    snippet TEXT,
+    subject TEXT,
+    magic_reply_draft TEXT,
+    created_at TIMESTAMPTZ DEFAULT now() NOT NULL
+);
+```
+
+#### `lead_collections`
+A junction table mapping leads to collections (many-to-many):
+```sql
+CREATE TABLE public.lead_collections (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id UUID NOT NULL REFERENCES public.leads(id) ON DELETE CASCADE,
+    collection_id UUID NOT NULL REFERENCES public.collections(id) ON DELETE CASCADE,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE (lead_id, collection_id)
+);
+```
+
+#### `follow_ups`
+Manages the CRM pipeline stages for follow-ups:
+```sql
+CREATE TABLE public.follow_ups (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    lead_id UUID NOT NULL REFERENCES public.leads(id) ON DELETE CASCADE,
+    status TEXT NOT NULL DEFAULT 'prospect' CHECK (status IN ('prospect', 'qualifie', 'message_envoye', 'reponse_recue', 'appel_planifie', 'deal_conclu')),
+    follow_up_date DATE,
+    notes TEXT,
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE (lead_id)
+);
+```
+
+#### `api_keys`
+Stores hashed API keys allowing secure programmatic access to Vectra:
+```sql
+CREATE TABLE public.api_keys (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  key_hash TEXT NOT NULL UNIQUE,
+  key_prefix TEXT NOT NULL, -- e.g. "vt_live_92hf"
+  name TEXT NOT NULL DEFAULT 'Default Key',
+  last_used_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+#### `notifications`
+Dispatches system triggers to the user interface dropdown:
+```sql
+CREATE TABLE public.notifications (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  type TEXT NOT NULL CHECK (type IN ('inbox_reply', 'agent_cycle', 'brevo_sent', 'lead_added')),
+  title TEXT NOT NULL,
+  body TEXT,
+  read BOOLEAN DEFAULT false,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+#### `activity_logs`
+Logs background autonomous agents cycles:
+```sql
+CREATE TABLE public.activity_logs (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  actor_type TEXT NOT NULL CHECK (actor_type IN ('user', 'agent')),
+  actor_name TEXT NOT NULL,
+  activity_type TEXT NOT NULL,
+  description TEXT NOT NULL,
+  metadata JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+```
+
+#### `lead_comments`
+Allows team member comments on CRM leads:
+```sql
+CREATE TABLE public.lead_comments (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  lead_id UUID NOT NULL REFERENCES public.leads(id) ON DELETE CASCADE,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  user_name TEXT NOT NULL,
+  content TEXT NOT NULL,
+  created_at TIMESTAMPTZ DEFAULT now()
 );
 ```
 
@@ -95,133 +246,117 @@ create table public.mailboxes (
 
 ## 2. Third-Party Integrations
 
-### Nylas V3 (Email OAuth) ✅
+### Nylas V3 (Email OAuth & Sending) ✅
+*   **OAuth Flow**: Users link their Google/Outlook accounts under `/app/settings/mailboxes`. The callback route ([`apps/web/app/api/auth/nylas/callback/route.ts`](file:///c:/Vectra%20-AI%20SaaS%20Prospecting/vectra/apps/web/app/api/auth/nylas/callback/route.ts)) exchanges the authentication code for an access token and persists the `nylas_grant_id`.
+*   **Email Sending**: Configured in [`apps/web/app/api/email/send/route.ts`](file:///c:/Vectra%20-AI%20SaaS%20Prospecting/vectra/apps/web/app/api/email/send/route.ts). Dispatches personalized emails utilizing the stored `grant_id`. Authorizes requests via `NYLAS_API_KEY` (or falls back to `NYLAS_CLIENT_SECRET`). Uses a template-based fallback in development if no Nylas credentials are set.
 
-**Status:** Fully implemented and tested.
+### Nylas Inbound Webhook ✅
+*   **Verification (GET)**: Responds to Nylas's challenge handshake on [`/api/webhooks/nylas`](file:///c:/Vectra%20-AI%20SaaS%20Prospecting/vectra/apps/web/app/api/webhooks/nylas/route.ts) with `status 200` to verify the endpoint ownership.
+*   **Processing (POST)**: Receives real-time email deltas (`message.created`). Parses email body text, resolving the sending lead and the linked mailbox. 
+*   **AI Sentiment Classifier**: Automatically classifies inbound messages into `interested`, `objection`, or `unsubscribe` sentiments.
+*   **AI Magic Reply Draft**: Pre-generates an AI response based on the sentiment and the campaign's offer/instructions.
+*   **Notifications**: Automatically dispatches an `inbox_reply` notification to the campaign owner's Supabase dashboard feed.
 
-**Flow:**
-1. User clicks "Connect Gmail/Outlook" in `/app/settings/mailboxes`
-2. Redirected to `https://api.us.nylas.com/v3/connect/auth` with `client_id`, `redirect_uri`, and `response_type=code`
-3. After consent, Nylas redirects to `/api/auth/nylas/callback?code=XXX`
-4. Callback exchanges code for token via `POST https://api.us.nylas.com/v3/connect/token`
-5. `grant_id` is persisted to Supabase `mailboxes` table
+### Stripe (Billing, Checkout & Webhooks) ✅
+*   **Checkout Session Creation**: Generates checkout pages inside `/api/billing/checkout` using Stripe pricing plans. Attached metadata maps back to user sessions.
+*   **Billing Portal**: Accessible via `/api/billing/portal` allowing users to manage cards, subscriptions, and billing details.
+*   **Webhooks**: Configured in `/api/webhooks/stripe` to handle `checkout.session.completed`, `customer.subscription.updated`, and `customer.subscription.deleted`. Updates the `profiles.plan`, `profiles.credits_limit`, and `profiles.credits_count` records dynamically.
 
-**Key env vars required:**
-```env
-NYLAS_CLIENT_ID=d12165a7-6c3b-4efc-a754-e9fdb60833fe
-NYLAS_CLIENT_SECRET=nyk_v0_hXlOGTOUj2hlnJ6fIFQ8we00aBqjM2R3fNvZLYJeLHzhg7jKtYE7Hzx31JEdXJDg
-NYLAS_REDIRECT_URI=http://localhost:3000/api/auth/nylas/callback
-```
+### Serper.dev (Candidate Discovery) ✅
+*   **Search Query Optimization**: Used inside [`apps/web/app/api/sourcing/agent/route.ts`](file:///c:/Vectra%20-AI%20SaaS%20Prospecting/vectra/apps/web/app/api/sourcing/agent/route.ts) to convert search guidelines into complex google filters (e.g. `site:linkedin.com/in AND "founder" AND "Canada"`), returning candidate LinkedIn URLs.
 
-**Callback route:** `apps/web/app/api/auth/nylas/callback/route.ts`
-- Handles both real OAuth (when `NYLAS_CLIENT_ID` + `NYLAS_CLIENT_SECRET` set) and dev mock fallback
-- Upserts mailbox with `grant_id` and `status: 'connected'`
-- Returns duplicate-safe error (`error=already_connected`) on `23505` Postgres constraint
-
-**Known Grant ID (production test):**
-- Grant ID: `63917b1a-d25e-44f5-a637-e48b276d5412`
-
----
+### ScrapeGraphAI (Web Scraping & Enriching) ✅
+*   **Dynamic Parsing**: Integrated in [`apps/web/app/api/sourcing/scrape/route.ts`](file:///c:/Vectra%20-AI%20SaaS%20Prospecting/vectra/apps/web/app/api/sourcing/scrape/route.ts) to scrape profiles, identifying candidate names, roles, descriptions, and companies from the URLs found by Serper.
+*   **Credit Deductions**: Deducts `leads.length * 5` credits from the user's `profiles.credits_count` upon a successful scraping transaction.
 
 ### OpenRouter AI (LLM Routing) ✅
+*   **Usage**: Powers all core AI endpoints (e.g., personalization scoring, magic replies, cold call simulator) via `https://openrouter.ai/api/v1/chat/completions`. Targets the best available free model (currently `google/gemini-2.0-flash-exp:free` or equivalent).
 
-**Status:** Active. Best available free model routed automatically.
-
-**Key env vars:**
-```env
-OPENROUTER_API_KEY=sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-```
-
-**Usage:** Powers all AI generation endpoints (`/api/generate`, magic replies, sourcing copilot) via `https://openrouter.ai/api/v1/chat/completions`. Model selection targets best free available (currently `google/gemini-2.0-flash-exp:free` or equivalent).
+### Brevo (CRM & Contact Synchronization) ✅
+*   **Usage**: Integrated in `/app/brevo` and settings `/app/settings/brevo`. Connects using the user's stored `profiles.brevo_api_key`.
+*   **Functionality**: Simulates and retrieves Brevo stats, lists, templates, and segments. Users can push CRM contacts directly into Brevo lists using `/api/brevo/lists/add-contacts` and track sent campaigns from the analytics dashboard.
 
 ---
 
 ## 3. Essential SaaS Infrastructure 🧱
 
 ### a) Deployment & Hosting
-- **Frontend**: Next.js 16 on **Vercel** with Turbopack, CI/CD via GitHub main branch
-- **Database**: Supabase Postgres with RLS policies active on all user-scoped tables
+- **Frontend**: Next.js 16 (App Router) on **Vercel** with Turbopack, integrated with GitHub main branches.
+- **Database**: Supabase Postgres with Row Level Security (RLS) active on all user-scoped tables to sandbox workspace records.
 
 ### b) Authentication & Route Middleware
-- **Supabase Auth** (email + password, magic links)
-- Protected routes under `/app/*` and `/api/*` via Next.js middleware
+- **Supabase Auth**: Authenticates users via Email & Password and Magic Link flows.
+- **Route Guard Middleware**: Protects `/app/*` and `/api/*` from anonymous sessions.
 
 ### c) Transactional Email (Resend)
-- `RESEND_API_KEY` env var required
-- Welcome + password reset emails via `lib/email.ts`
+- Sends automated transactional and onboarding emails via the helper script `lib/email.ts` using the global `RESEND_API_KEY`.
 
 ### d) Monitoring & Uptime
-- **Sentry** for client + server exception tracking
-- `/api/health` endpoint for uptime monitoring (UptimeRobot / Better Stack)
+- **Sentry**: Tracks server-side exceptions (in API routes) and client-side React rendering runtime errors.
+- **/api/health**: A dedicated JSON healthcheck endpoint monitored by UptimeRobot or Better Stack.
 
 ### e) Product Analytics (PostHog)
-- Events tracked: `campaign_created`, `leads_imported`, `messages_generated`, `inbox_reply_sent`, `agents_config_saved`, `training_simulation_started`, `training_simulation_ended`
-
-### f) Billing (Stripe)
-- Checkout: `/api/billing/checkout`
-- Portal: `/api/billing/portal`
-- Webhooks: `/api/webhooks/stripe` handles `checkout.session.completed`, `customer.subscription.updated`, `customer.subscription.deleted`
+- Event logging for user telemetry (e.g. `campaign_created`, `leads_imported`, `messages_generated`, `inbox_reply_sent`, `agents_config_saved`, `training_simulation_started`, `training_simulation_ended`).
 
 ---
 
-## 4. UI/UX System (Latest Redesign) 🎨
+## 4. Visual Identity & Branding System
 
-### Announcement Bar
-- **Color**: Orange (`border-orange-100`, `text-orange-600`, `text-orange-500`)
-- **Pattern**: `.bg-pattern` class with `bg-white/60` overlay
-- **Content**: Trial-expired messaging with "Explore plans" CTA link
-- **Position**: Full-width top bar, `z-20`, `shrink-0`, rendered in **both** settings and main app layouts
+### Custom Brand Assets (in `public/`)
+To replace default mocks with high-quality visual identity layouts:
+1.  **Application Icon/Logo**: `icon-192.png` and `icon-512.png` (displays an off-white geometric 'S' on a forest green rounded box).
+2.  **Auth Panel Banner**: `auth-hero.png` (emerald/green lighting gradient with a glassmorphism card structure overlay).
+3.  **Client Shared Banner**: `hero-banner.png` (high-res 1700x400px wide vector wave banner).
 
-### Sidebar
-- **Width**: `w-[260px]` expanded, `w-16` collapsed
-- **Background**: `bg-[#FBFBFC]`
-- **Header**: Workspace dropdown (emerald `W` logo + workspace name + chevron), collapse button
-- **Search shortcuts**: `⌘ K` (new search) and `⌘ /` (quick search) as styled button widgets
-- **Nav items**: `rounded-md`, active = `bg-zinc-200/60 text-zinc-900`, inactive hover = `hover:bg-zinc-100`
-- **Collections section**: Collapsible with `group-hover` reveal of `+` button
-- **Trial card** (bottom): Orange-bordered card with full progress bar and "trial complete" messaging
-- **Profile section**: Avatar initials + name + email + `ChevronDown`, opens `ProfileDropdown`
+### Local Demo Bypass Mode
+Allows developers and stakeholders to review pages without having configured active Supabase database nodes or credentials:
+- When running in `development` mode (`process.env.NODE_ENV === 'development'`), navigating to `/auth/sign-in` provides an "Accéder à la démo (sans connexion)" option which redirects to `/app?bypass=true`.
+- Next.js middleware ([`apps/web/lib/middleware.ts`](file:///c:/Vectra%20-AI%20SaaS%20Prospecting/vectra/apps/web/lib/middleware.ts)) intercepts the bypass parameter, setting the browser cookie `sb-mock-session=true`.
+- Local components intercept this cookie and fallback to mock local storage wrappers (`getCollections`, `getCredits`, `saveLeads` in `lib/db-fallback.ts`) to permit full trial loops.
 
 ---
 
-## 5. Playwright E2E Testing
+## 5. UI Layout & Dashboard Chart Rendering
 
-All tests in `apps/web/tests/vectra.spec.ts` use structured mocks:
+### Responsive Layouts
+- The settings sidebar layout adapts dynamically using CSS breakpoints. On viewports below `md` width, a responsive burger button toggles the sidebar overlay `isMobileOpen` state.
 
-1. **Session seeding** via `page.addInitScript()` injecting mock Supabase token
-2. **Auth & REST interception** via `page.route()` for campaign/lead/message queries
+### SVG Chart NaN Fix
+- The main app dashboard page ([`apps/web/app/app/page.tsx`](file:///c:/Vectra%20-AI%20SaaS%20Prospecting/vectra/apps/web/app/app/page.tsx)) prevents mathematical division by zero (`0/0 = NaN` when calculating coordinate layout values for zero active candidates).
+- Solves this by utilizing a default fallback bounds height of `10` when estimating scales:
+  ```typescript
+  const maxVal = (Math.max(...activePoints) || 10) * 1.15;
+  ```
 
+---
+
+## 6. Playwright E2E Testing
+
+The E2E suite runs sequential headless tests utilizing mock session seeding and network routing interceptors:
+1.  **Session Seeding**: Injects local storage session tokens prior to page loads via `page.addInitScript()`.
+2.  **Mock REST Interception**: Overrides requests to campaigns, leads, mailboxes, and Brevo resources through Playwright's `page.route()` interface.
+
+### Running Tests
+Make sure the local Next.js dev server is stopped (to prevent port 3000 conflicts) and run:
 ```bash
-# Run all tests headless
+# Run all tests sequentially
 npx playwright test
-
-# Run with UI inspector
-npx playwright test --ui
 ```
 
 ---
 
-## 6. Core SaaS Modules
+## 7. Core Modules Route Index
 
-| Module | Route | Status |
-|--------|-------|--------|
-| Dashboard | `/app` | ✅ |
-| Sourcing Copilot | `/app/sourcing` | ✅ |
-| Lead Library | `/app/library` | ✅ |
-| Outreach Hub | `/app/outreach` | ✅ |
-| Unified Inbox | `/app/inbox` | ✅ |
-| Agent Workflows | `/app/agents` | ✅ |
-| Analytics Funnel | `/app/analytics` | ✅ |
-| Follow-up Tracker | `/app/followup` | ✅ |
-| Cold Call Trainer | `/app/training` | ✅ |
-| Settings / Mailboxes | `/app/settings` | ✅ |
-
----
-
-## 7. Next Steps & Roadmap
-
-1. **Real Sourcing Flow**: Implement end-to-end Campaign → Sourcing → Lead Gen → Message Gen using live API integrations
-2. **Nylas Email Sending**: Use `grant_id` from `mailboxes` table to send personalized outreach via Nylas V3 `/messages/send`
-3. **Production Env Swap**: Replace local mock parameters with live Stripe checkout links, real email delivery, and production Supabase triggers
-4. **Advanced AI Scoring**: Refine matching prompt algorithms in `/api/generate` to scale with specialized tech ICPs
-5. **Mobile Responsive Polish**: Adapt 260px sidebar to responsive breakpoints for tablet/mobile views
+| Module | Route | Status | Notes |
+| :--- | :--- | :--- | :--- |
+| **Dashboard** | `/app` | ✅ Stable | SVG Chart NaN exception fully fixed |
+| **Sourcing Copilot** | `/app/sourcing` | ✅ Stable | Serper & ScrapeGraphAI integrations active |
+| **Lead Library** | `/app/library` | ✅ Stable | Table grid, CSV import, and Collections filter |
+| **Outreach Hub** | `/app/outreach` | ✅ Stable | Shortlist / Hide controls, prompt personalization score |
+| **Unified Inbox** | `/app/inbox` | ✅ Stable | Multi-pane conversations, Magic Reply panel |
+| **Agent Workflows** | `/app/agents` | ✅ Stable | Agent config options (Hermes, Apollo, Athena) |
+| **Analytics Funnel** | `/app/analytics` | ✅ Stable | Conversion funnel + CSS graphs + Brevo stats |
+| **Follow-up Tracker** | `/app/followup` | ✅ Stable | Pipeline tracker status selectors, "En retard" alerts |
+| **Cold Call Trainer** | `/app/training` | ✅ Stable | Persona AI conversations (CTO, CEO, HR) + Scorecards |
+| **Brevo CRM Hub** | `/app/brevo` | ✅ Stable | Contacts import, segments, email campaigns, templates |
+| **Settings / Mailboxes** | `/app/settings` | ✅ Stable | Nylas connected mailboxes tab, API keys configuration |

@@ -21,6 +21,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Non autorisé' }, { status: 401 });
     }
 
+    if (!process.env.OPENAI_API_KEY && !process.env.OPENROUTER_API_KEY) {
+      return NextResponse.json({ error: 'API keys missing' }, { status: 500 });
+    }
+
     const { persona, difficulty, messages } = await req.json();
 
     if (!persona || !difficulty || !messages) {

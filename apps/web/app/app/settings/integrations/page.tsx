@@ -86,7 +86,7 @@ export default function IntegrationsPage() {
     <div className="p-10 bg-white">
       <div className="max-w-4xl space-y-10">
         <div>
-          <h1 className="text-2xl font-extrabold text-zinc-900 tracking-tight">Intégrations</h1>
+          <h1 className="text-2xl font-extrabold text-zinc-900 tracking-tight">Integrations</h1>
           <p className="text-sm text-zinc-400 font-medium mt-1">
             Connectez vos outils et services
           </p>
@@ -166,7 +166,7 @@ export default function IntegrationsPage() {
                   <span>Slack connecté</span>
                 </>
               ) : (
-                'Ajouter à Slack'
+                'Add to Slack'
               )}
             </Button>
           </div>

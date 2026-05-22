@@ -409,7 +409,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           <aside 
             className={`fixed inset-y-0 left-0 z-50 md:relative flex flex-col border-r border-zinc-200 bg-white transition-transform md:transition-all duration-300 shrink-0 ${
               isMobileOpen ? 'translate-x-0' : '-translate-x-full'
-            } md:translate-x-0 w-60 md:flex h-full`}
+            } md:translate-x-0 lg:w-60 md:w-52 w-60 md:flex h-full`}
           >
             {/* Go back button header */}
             <div className="h-14 flex items-center px-4 select-none">
@@ -454,6 +454,27 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
 
           {/* Main Area */}
           <main className="flex-1 flex flex-col h-full overflow-hidden bg-white">
+            {/* Universal Settings Mobile Header */}
+            <div className="md:hidden flex h-14 items-center justify-between px-4 border-b border-zinc-200 bg-white select-none shrink-0">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setIsMobileOpen(true)}
+                  className="p-2 -ml-2 rounded-xl text-zinc-500 hover:text-zinc-800 hover:bg-zinc-100 transition-all focus:outline-none"
+                  aria-label="Open settings menu"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6h16M4 12h16M4 18h16"></path>
+                  </svg>
+                </button>
+                <Link href="/app" className="flex items-center gap-1.5">
+                  <div className="w-6 h-6 bg-emerald-500 rounded text-white flex items-center justify-center text-xs font-bold">V</div>
+                  <span className="text-xs font-bold text-zinc-800">Settings</span>
+                </Link>
+              </div>
+              <div className="flex items-center gap-2">
+                <NotificationDropdown />
+              </div>
+            </div>
             {children}
           </main>
         </div>
@@ -495,7 +516,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           className={`fixed inset-y-0 left-0 z-40 md:relative flex flex-col border-r border-zinc-200 bg-[#FBFBFC] transition-transform md:transition-all duration-300 shrink-0 ${
             isMobileOpen ? 'translate-x-0' : '-translate-x-full'
           } md:translate-x-0 ${
-            isCollapsed ? 'md:w-16' : 'md:w-[260px]'
+            isCollapsed ? 'md:w-16' : 'lg:w-[260px] md:w-56'
           } w-[260px] md:flex h-full`}
         >
           {/* Brand Workspace Header */}

@@ -404,6 +404,7 @@ export default function SourcingPage() {
 
       // Save lead using our hybrid helper
       await saveLead({
+        campaign_id: campaignId,
         name: candidate.name,
         company: candidate.company,
         website: `https://${candidate.website}`,

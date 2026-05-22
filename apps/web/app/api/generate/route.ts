@@ -183,6 +183,62 @@ function generateMockOutreach(
     emailBody = emailBody.replace("a quick 15-minute call", campaign.call_to_action);
   }
 
+  // Calculate dynamic personalization score based on Campaign ICP
+  let score = 50; // base low score
+  const targetIcp = campaign.icp_description || campaign.icp;
+  if (targetIcp) {
+    const icpLower = targetIcp.toLowerCase();
+    const leadTitle = (lead.title || lead.job_title || lead.notes || lead.name || '').toLowerCase();
+    const leadNotes = (lead.notes || '').toLowerCase();
+    const leadLoc = (lead.location || '').toLowerCase();
+    const leadComp = (lead.company || '').toLowerCase();
+
+    // Check tech keywords matching
+    const techKeywords = ['nextjs', 'next.js', 'react', 'python', 'typescript', 'ai', 'llm', 'software', 'saas', 'tech'];
+    let techMatched = false;
+    for (const tech of techKeywords) {
+      if (icpLower.includes(tech) && (leadTitle.includes(tech) || leadNotes.includes(tech) || leadComp.includes(tech))) {
+        techMatched = true;
+        break;
+      }
+    }
+
+    // Check role matches
+    const roles = ['founder', 'ceo', 'cto', 'co-founder', 'dirigeant', 'architect', 'engineer', 'developer', 'marketer'];
+    let roleMatched = false;
+    for (const r of roles) {
+      if (icpLower.includes(r) && (leadTitle.includes(r) || leadNotes.includes(r))) {
+        roleMatched = true;
+        break;
+      }
+    }
+
+    // Match geography
+    let locMatched = false;
+    const countries = ['canada', 'france', 'usa', 'united states', 'uk', 'united kingdom', 'europe', 'quebec', 'montreal', 'paris', 'toronto'];
+    for (const c of countries) {
+      if (icpLower.includes(c) && (leadLoc.includes(c) || leadNotes.includes(c))) {
+        locMatched = true;
+        break;
+      }
+    }
+
+    if (techMatched && roleMatched) {
+      // High match: 85 - 100
+      score = Math.floor(Math.random() * (98 - 85 + 1)) + 85;
+    } else if (roleMatched || techMatched || locMatched) {
+      // Medium match: 60 - 84
+      score = Math.floor(Math.random() * (84 - 60 + 1)) + 60;
+    } else {
+      // Low match: < 60
+      score = Math.floor(Math.random() * (59 - 45 + 1)) + 45;
+    }
+  } else {
+    // Default high-quality matches fallback
+    score = Math.floor(Math.random() * (96 - 84 + 1)) + 84;
+  }
+  score = Math.min(Math.max(score, 20), 100); // Bound between 20 and 100
+
   return {
     summary: lang === 'fr' 
       ? `${name} est associé à ${company}. D'après les informations disponibles sur leur site web (${lead.website || 'non spécifié'}), l'entreprise est active dans son secteur et pourrait bénéficier de recommandations d'optimisation spécifiques.` 
@@ -190,7 +246,7 @@ function generateMockOutreach(
     email_subject: matchedTemplate.subject,
     email_body: emailBody,
     linkedin_message: matchedTemplate.linkedin,
-    personalization_score: getRandomScore()
+    personalization_score: score
   };
 }
 
@@ -304,6 +360,7 @@ export async function POST(req: Request) {
               const systemPrompt = `You are Hermes-Agent, an elite sales copywriter.
 Analyze the prospect's background and campaign requirements.
 Campaign Offer: "${campaignDetails.offer || ''}"
+Campaign Target ICP (Ideal Customer Profile): "${campaignDetails.icp_description || campaignDetails.icp || ''}"
 Campaign Angle: "${campaignDetails.angle || 'audit'}" (${campaignDetails.angle_description || ''})
 Campaign Call to Action: "${campaignDetails.call_to_action || ''}"
 Campaign Guidelines: "${campaignDetails.extra_instructions || ''}"
@@ -315,7 +372,7 @@ You MUST output exactly a JSON object (no markdown wrappers) with:
 - email_subject: an eye-catching email subject line
 - email_body: personalized email copy (sign with the sender name: ${userFirstName || 'the user'})
 - linkedin_message: personalized short LinkedIn connection request message
-- personalization_score: integer from 80 to 100 based on fit.`;
+- personalization_score: integer from 0 to 100 representing how closely the prospect matches the Campaign Target ICP (Ideal Customer Profile) constraints based on their title, location, company, and profile description. An exact match (matching role, geography, and industry constraints) scores 85-100; a partial match scores 60-84; and prospects violating constraints must score below 60.`;
 
               const userPrompt = `Prospect details:
 Name: ${lead.name}
@@ -336,7 +393,7 @@ Notes/ICP context: ${lead.notes || 'N/A'}`;
                 email_subject: parsed.email_subject || '',
                 email_body: parsed.email_body || '',
                 linkedin_message: parsed.linkedin_message || '',
-                personalization_score: Number(parsed.personalization_score) || getRandomScore()
+                personalization_score: Number(parsed.personalization_score) || (Math.floor(Math.random() * 15) + 80)
               };
             } catch (err) {
               console.warn('Real AI generation call failed, falling back to local mock template:', err);
